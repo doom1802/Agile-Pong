@@ -6,7 +6,7 @@ import { z } from "zod"
 import { applyRating } from "@/domain/rating"
 import { parseSetScores } from "@/domain/scores"
 import { createClient } from "@/lib/supabase/server"
-import { requireUser, validateEmail } from "./auth"
+import { clearMockSessionCookie, isMockAuthEnabled, requireUser, setMockSessionCookie, validateEmail, validateMockCode } from "./auth"
 import { db } from "./db"
 import type { MatchPlayer, MatchWithDetails } from "./db/types"
 
@@ -14,6 +14,10 @@ export const requestLoginCode = async (formData: FormData) => {
   const email = validateEmail(String(formData.get("email") ?? ""))
   if (!email) {
     redirect("/login?error=domain")
+  }
+
+  if (isMockAuthEnabled) {
+    redirect(`/login?email=${encodeURIComponent(email)}&sent=1`)
   }
 
   const supabase = await createClient()
@@ -38,6 +42,18 @@ export const requestLoginCode = async (formData: FormData) => {
 export const verifyLoginCode = async (formData: FormData) => {
   const email = validateEmail(String(formData.get("email") ?? ""))
   const code = String(formData.get("code") ?? "")
+
+  if (isMockAuthEnabled) {
+    if (!email || !validateMockCode(code)) {
+      redirect(`/login?email=${encodeURIComponent(email ?? "")}&sent=1&error=code`)
+    }
+
+    const existingUser = await db.getUserByEmail(email)
+    const user = await db.upsertUserByEmail(email)
+    const session = await db.createSession(user.id)
+    await setMockSessionCookie(session.token)
+    redirect(existingUser || user.officeLocation ? "/" : "/onboarding")
+  }
 
   if (!email || !/^\d{6,10}$/.test(code.trim())) {
     redirect(`/login?email=${encodeURIComponent(email ?? "")}&sent=1&error=code`)
@@ -64,6 +80,11 @@ export const verifyLoginCode = async (formData: FormData) => {
 }
 
 export const logout = async () => {
+  if (isMockAuthEnabled) {
+    await clearMockSessionCookie()
+    redirect("/login")
+  }
+
   const supabase = await createClient()
   await supabase.auth.signOut()
   redirect("/login")
@@ -89,6 +110,12 @@ export const saveProfile = async (formData: FormData) => {
 
   if (!parsed.success) {
     redirect("/profile?error=invalid")
+  }
+
+  if (isMockAuthEnabled) {
+    await db.updateProfile(user.id, parsed.data)
+    revalidatePath("/")
+    redirect("/")
   }
 
   const supabase = await createClient()

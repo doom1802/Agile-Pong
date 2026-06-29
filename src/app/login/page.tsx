@@ -1,4 +1,5 @@
 import { requestLoginCode, verifyLoginCode } from "@/server/actions"
+import { isMockAuthEnabled } from "@/server/auth"
 
 export default async function LoginPage({ searchParams }: { searchParams: Promise<{ email?: string; sent?: string; error?: string }> }) {
   const params = await searchParams
@@ -10,7 +11,11 @@ export default async function LoginPage({ searchParams }: { searchParams: Promis
       <section className="auth-panel panel">
         <p className="eyebrow">Agile Lab</p>
         <h1>Agile Pong</h1>
-        <p className="subtle">{codeSent ? `We sent a one-time code to ${email}.` : "Sign in with your company email."}</p>
+        <p className="subtle">
+          {isMockAuthEnabled
+            ? codeSent ? `Local login ready for ${email}.` : "Local mock authentication is enabled. No email will be sent."
+            : codeSent ? `We sent a one-time code to ${email}.` : "Sign in with your company email."}
+        </p>
 
         {params.error === "domain" ? <p className="pill gold">Use an @agilelab.it email.</p> : null}
         {params.error === "code" ? <p className="pill gold">The code is invalid or expired.</p> : null}
@@ -34,7 +39,7 @@ export default async function LoginPage({ searchParams }: { searchParams: Promis
             <input name="email" type="hidden" value={email} />
             <label className="field">
               <span>One-time code</span>
-              <input autoComplete="one-time-code" className="input" inputMode="numeric" maxLength={10} minLength={6} name="code" pattern="[0-9]{6,10}" placeholder="12345678" required />
+              <input autoComplete="one-time-code" className="input" defaultValue={isMockAuthEnabled ? "123456" : ""} inputMode="numeric" maxLength={10} minLength={6} name="code" pattern="[0-9]{6,10}" placeholder="12345678" required />
             </label>
             <button className="button success full" type="submit">
               Enter
