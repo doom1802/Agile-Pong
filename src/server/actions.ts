@@ -7,7 +7,7 @@ import { applyRating } from "@/domain/rating"
 import { parseSetScores } from "@/domain/scores"
 import { createClient } from "@/lib/supabase/server"
 import { clearMockSessionCookie, isMockAuthEnabled, requireUser, setMockSessionCookie, validateEmail, validateMockCode } from "./auth"
-import { db } from "./db"
+import { db, isMockDataEnabled } from "./db"
 import type { MatchPlayer, MatchWithDetails } from "./db/types"
 
 export const requestLoginCode = async (formData: FormData) => {
@@ -192,6 +192,17 @@ export const submitResult = async (formData: FormData) => {
   const user = await requireUser()
   const match = await getMutableMatch(String(formData.get("matchId")))
   const sets = parseSetScores(match.id, String(formData.get("sets") ?? ""))
+
+  if (!isMockDataEnabled) {
+    const supabase = await createClient()
+    const { error } = await supabase.rpc("submit_match_result_command", {
+      p_match_id: match.id,
+      p_sets: sets.map((set) => ({ sideAPoints: set.sideAPoints, sideBPoints: set.sideBPoints }))
+    })
+    if (error) throw new Error(error.message)
+    revalidatePath("/matches")
+    return
+  }
 
   match.status = "submitted"
   match.submittedByUserId = user.id

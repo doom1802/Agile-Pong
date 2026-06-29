@@ -152,7 +152,24 @@ export const supabaseRepository: Repository = {
   async createSession() { return unsupportedWrite() },
   async getSessionByToken() { return null },
   async revokeSession() { return unsupportedWrite() },
-  async createMatch() { return unsupportedWrite() },
+  async createMatch(input) {
+    const supabase = await createClient()
+    const orderedPlayers = [...input.players].sort((a, b) => {
+      if (a.side !== b.side) return a.side === "A" ? -1 : 1
+      return a.position - b.position
+    })
+    const { data: id, error } = await supabase.rpc("create_match_command", {
+      p_mode: input.mode,
+      p_type: input.type,
+      p_points_to_win: input.pointsToWin ?? 0,
+      p_best_of: input.bestOf ?? 0,
+      p_player_ids: orderedPlayers.map((player) => player.userId)
+    })
+    if (error || !id) throw new Error(error?.message ?? "Unable to create match")
+    const match = await this.getMatch(id)
+    if (!match) throw new Error("Created match not found")
+    return match
+  },
   async updateMatch() { return unsupportedWrite() },
   async replaceMatchSets() { return unsupportedWrite() },
   async updateMatchPlayers() { return unsupportedWrite() },

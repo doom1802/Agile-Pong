@@ -332,7 +332,20 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      create_match_command: {
+        Args: {
+          p_best_of: number
+          p_mode: Database["public"]["Enums"]["match_mode"]
+          p_player_ids: string[]
+          p_points_to_win: number
+          p_type: Database["public"]["Enums"]["match_type"]
+        }
+        Returns: string
+      }
+      submit_match_result_command: {
+        Args: { p_match_id: string; p_sets: Json }
+        Returns: undefined
+      }
     }
     Enums: {
       match_event_type:
