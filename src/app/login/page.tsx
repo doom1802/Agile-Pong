@@ -2,7 +2,7 @@ import { requestLoginCode, verifyLoginCode } from "@/server/actions"
 
 export default async function LoginPage({ searchParams }: { searchParams: Promise<{ email?: string; sent?: string; error?: string }> }) {
   const params = await searchParams
-  const email = params.email ?? "domenico.bulfamante@agilelab.it"
+  const email = params.email ?? ""
   const codeSent = Boolean(params.sent && email)
 
   return (
@@ -10,10 +10,12 @@ export default async function LoginPage({ searchParams }: { searchParams: Promis
       <section className="auth-panel panel">
         <p className="eyebrow">Agile Lab</p>
         <h1>Agile Pong</h1>
-        <p className="subtle">{codeSent ? `Code sent to ${email}. For the MVP, use 123456.` : "Sign in with your company email. For the MVP the code is mocked as 123456."}</p>
+        <p className="subtle">{codeSent ? `We sent a one-time code to ${email}.` : "Sign in with your company email."}</p>
 
         {params.error === "domain" ? <p className="pill gold">Use an @agilelab.it email.</p> : null}
-        {params.error === "code" ? <p className="pill gold">Wrong code. Try 123456.</p> : null}
+        {params.error === "code" ? <p className="pill gold">The code is invalid or expired.</p> : null}
+        {params.error === "send" ? <p className="pill gold">We could not send the code. Please try again shortly.</p> : null}
+        {params.error === "rate-limit" ? <p className="pill gold">Too many codes requested. Please wait before trying again.</p> : null}
 
         {!codeSent ? (
           <form action={requestLoginCode} className="form" style={{ marginTop: 18 }}>
@@ -32,7 +34,7 @@ export default async function LoginPage({ searchParams }: { searchParams: Promis
             <input name="email" type="hidden" value={email} />
             <label className="field">
               <span>One-time code</span>
-              <input className="input" defaultValue="123456" inputMode="numeric" name="code" placeholder="123456" />
+              <input autoComplete="one-time-code" className="input" inputMode="numeric" maxLength={10} minLength={6} name="code" pattern="[0-9]{6,10}" placeholder="12345678" required />
             </label>
             <button className="button success full" type="submit">
               Enter

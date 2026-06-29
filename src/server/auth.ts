@@ -1,47 +1,51 @@
-import { cookies } from "next/headers"
 import { redirect } from "next/navigation"
-import { db } from "./db"
+import { createClient } from "@/lib/supabase/server"
+import type { Database } from "@/lib/supabase/database.types"
+import type { User } from "./db/types"
 
-const COOKIE_NAME = "agile_pong_session"
 const ALLOWED_DOMAIN = process.env.ALLOWED_EMAIL_DOMAIN ?? "agilelab.it"
-const MOCK_CODE = process.env.MOCK_LOGIN_CODE ?? "123456"
+
+type Profile = Database["public"]["Tables"]["profiles"]["Row"]
 
 export const validateEmail = (email: string) => {
   const normalized = email.trim().toLowerCase()
   return normalized.endsWith(`@${ALLOWED_DOMAIN}`) ? normalized : null
 }
 
-export const validateCode = (code: string) => code.trim() === MOCK_CODE
-
-export const setSessionCookie = async (token: string) => {
-  const cookieStore = await cookies()
-  cookieStore.set(COOKIE_NAME, token, {
-    httpOnly: true,
-    sameSite: "lax",
-    secure: process.env.NODE_ENV === "production",
-    maxAge: 60 * 60 * 24 * 30,
-    path: "/"
-  })
-}
-
-export const clearSessionCookie = async () => {
-  const cookieStore = await cookies()
-  cookieStore.delete(COOKIE_NAME)
-}
+const toUser = (profile: Profile): User => ({
+  id: profile.id,
+  email: profile.email,
+  firstName: profile.first_name,
+  lastName: profile.last_name,
+  nickname: profile.nickname,
+  avatarUrl: profile.avatar_url,
+  officeLocation: profile.office_location,
+  isAdmin: false,
+  createdAt: profile.created_at,
+  updatedAt: profile.updated_at,
+  lastLoginAt: profile.last_login_at
+})
 
 export const getCurrentUser = async () => {
-  const cookieStore = await cookies()
-  const token = cookieStore.get(COOKIE_NAME)?.value
-  if (!token) {
+  const supabase = await createClient()
+  const { data, error } = await supabase.auth.getClaims()
+  const userId = data?.claims?.sub
+
+  if (error || !userId) {
     return null
   }
 
-  const session = await db.getSessionByToken(token)
-  if (!session) {
+  const { data: profile, error: profileError } = await supabase
+    .from("profiles")
+    .select("*")
+    .eq("id", userId)
+    .single()
+
+  if (profileError || !profile) {
     return null
   }
 
-  return db.getUserById(session.userId)
+  return toUser(profile)
 }
 
 export const requireUser = async () => {

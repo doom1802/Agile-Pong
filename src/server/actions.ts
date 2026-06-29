@@ -2,9 +2,11 @@
 
 import { revalidatePath } from "next/cache"
 import { redirect } from "next/navigation"
+import { z } from "zod"
 import { applyRating } from "@/domain/rating"
 import { parseSetScores } from "@/domain/scores"
-import { clearSessionCookie, requireUser, setSessionCookie, validateCode, validateEmail } from "./auth"
+import { createClient } from "@/lib/supabase/server"
+import { requireUser, validateEmail } from "./auth"
 import { db } from "./db"
 import type { MatchPlayer, MatchWithDetails } from "./db/types"
 
@@ -14,6 +16,22 @@ export const requestLoginCode = async (formData: FormData) => {
     redirect("/login?error=domain")
   }
 
+  const supabase = await createClient()
+  const { error } = await supabase.auth.signInWithOtp({
+    email,
+    options: { shouldCreateUser: true }
+  })
+
+  if (error) {
+    const reason = error.status === 429 ? "rate-limit" : "send"
+    console.error("Unable to send login OTP", {
+      code: error.code,
+      message: error.message,
+      status: error.status
+    })
+    redirect(`/login?email=${encodeURIComponent(email)}&error=${reason}`)
+  }
+
   redirect(`/login?email=${encodeURIComponent(email)}&sent=1`)
 }
 
@@ -21,31 +39,73 @@ export const verifyLoginCode = async (formData: FormData) => {
   const email = validateEmail(String(formData.get("email") ?? ""))
   const code = String(formData.get("code") ?? "")
 
-  if (!email || !validateCode(code)) {
-    redirect(`/login?email=${encodeURIComponent(email ?? "")}&error=code`)
+  if (!email || !/^\d{6,10}$/.test(code.trim())) {
+    redirect(`/login?email=${encodeURIComponent(email ?? "")}&sent=1&error=code`)
   }
 
-  const existingUser = await db.getUserByEmail(email)
-  const user = await db.upsertUserByEmail(email)
-  const session = await db.createSession(user.id)
-  await setSessionCookie(session.token)
-  redirect(existingUser || user.officeLocation ? "/" : "/onboarding")
+  const supabase = await createClient()
+  const { data, error } = await supabase.auth.verifyOtp({
+    email,
+    token: code.trim(),
+    type: "email"
+  })
+
+  if (error || !data.user) {
+    redirect(`/login?email=${encodeURIComponent(email)}&sent=1&error=code`)
+  }
+
+  const { data: profile } = await supabase
+    .from("profiles")
+    .select("office_location")
+    .eq("id", data.user.id)
+    .single()
+
+  redirect(profile?.office_location ? "/" : "/onboarding")
 }
 
 export const logout = async () => {
-  await clearSessionCookie()
+  const supabase = await createClient()
+  await supabase.auth.signOut()
   redirect("/login")
 }
 
+const profileSchema = z.object({
+  firstName: z.string().trim().min(1).max(80),
+  lastName: z.string().trim().min(1).max(80),
+  nickname: z.string().trim().min(1).max(40),
+  avatarUrl: z.string().trim().max(2048),
+  officeLocation: z.string().trim().min(1).max(120)
+})
+
 export const saveProfile = async (formData: FormData) => {
   const user = await requireUser()
-  await db.updateProfile(user.id, {
+  const parsed = profileSchema.safeParse({
     firstName: String(formData.get("firstName") ?? ""),
     lastName: String(formData.get("lastName") ?? ""),
     nickname: String(formData.get("nickname") ?? ""),
     avatarUrl: String(formData.get("avatarUrl") ?? ""),
     officeLocation: String(formData.get("officeLocation") ?? "")
   })
+
+  if (!parsed.success) {
+    redirect("/profile?error=invalid")
+  }
+
+  const supabase = await createClient()
+  const { error } = await supabase
+    .from("profiles")
+    .update({
+      first_name: parsed.data.firstName,
+      last_name: parsed.data.lastName,
+      nickname: parsed.data.nickname,
+      avatar_url: parsed.data.avatarUrl,
+      office_location: parsed.data.officeLocation
+    })
+    .eq("id", user.id)
+
+  if (error) {
+    throw new Error("Unable to save profile")
+  }
 
   revalidatePath("/")
   redirect("/")

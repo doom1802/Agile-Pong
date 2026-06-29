@@ -5,8 +5,8 @@ Small MVP for Agile Lab's internal ping pong ranking app.
 ## What is included
 
 - Next.js App Router frontend and backend actions.
-- Mock passwordless login: use any `@agilelab.it` email and code `123456`.
-- Long-lived cookie session in the mock repository.
+- Passwordless Supabase Auth restricted to `@agilelab.it` email addresses.
+- SSR cookie sessions refreshed by the Next.js proxy.
 - Profile onboarding with nickname, name, avatar URL, and office.
 - Singles and doubles leaderboards.
 - Ranked and unranked match creation.
@@ -23,16 +23,10 @@ npm run dev
 
 Then open `http://localhost:3001`.
 
-## Mock login
+## Authentication
 
-Use:
-
-```txt
-email: any @agilelab.it address
-code: 123456
-```
-
-Seeded users are in `src/server/db/mock-data.ts`.
+Configure Supabase using `.env.example`, then sign in with an `@agilelab.it`
+address and the one-time code delivered by email.
 
 ## Where to swap the DB
 
