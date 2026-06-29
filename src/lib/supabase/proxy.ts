@@ -1,6 +1,7 @@
 import { createServerClient } from "@supabase/ssr"
 import { NextResponse, type NextRequest } from "next/server"
 import { getSupabaseConfig, isSupabaseConfigured } from "./config"
+import type { Database } from "./database.types"
 
 export const refreshSupabaseSession = async (request: NextRequest) => {
   if (!isSupabaseConfigured) {
@@ -9,7 +10,7 @@ export const refreshSupabaseSession = async (request: NextRequest) => {
 
   let response = NextResponse.next({ request })
   const { url, publishableKey } = getSupabaseConfig()
-  const supabase = createServerClient(url, publishableKey, {
+  const supabase = createServerClient<Database>(url, publishableKey, {
     cookies: {
       getAll: () => request.cookies.getAll(),
       setAll: (cookiesToSet) => {
