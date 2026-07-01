@@ -1,5 +1,5 @@
 begin;
-select plan(15);
+select plan(17);
 
 select has_table('public', 'profiles', 'profiles exists');
 select has_table('public', 'matches', 'matches exists');
@@ -17,6 +17,21 @@ select policies_are('public', 'player_ratings', array['ratings_read_authenticate
 select policies_are('public', 'matches', array['matches_read_authenticated'], 'matches are read-only through RLS');
 select table_privs_are('public', 'matches', 'anon', array[]::text[], 'anonymous users have no match privileges');
 select table_privs_are('public', 'matches', 'authenticated', array['SELECT'], 'authenticated users cannot write matches directly');
+
+select ok(
+  case
+    when to_regprocedure('public.rls_auto_enable()') is null then true
+    else not has_function_privilege('anon', 'public.rls_auto_enable()', 'execute')
+  end,
+  'anonymous users cannot execute the RLS administration helper'
+);
+select ok(
+  case
+    when to_regprocedure('public.rls_auto_enable()') is null then true
+    else not has_function_privilege('authenticated', 'public.rls_auto_enable()', 'execute')
+  end,
+  'authenticated users cannot execute the RLS administration helper'
+);
 
 select * from finish();
 rollback;

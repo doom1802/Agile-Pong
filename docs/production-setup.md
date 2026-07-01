@@ -20,7 +20,7 @@ Completed in code and local validation:
 
 Required dashboard checks before release:
 
-- Open Supabase **Database > Security Advisor** and resolve or document every finding.
+- Security Advisor has been reviewed: match-command warnings are intentional, password-leak protection is not applicable to OTP-only Auth, and `202607010001_restrict_rls_auto_enable.sql` remediates the exposed administrative helper. Apply it to production and refresh the advisor.
 - Enable database SSL enforcement and review network restrictions.
 - Protect Supabase, GitHub and Vercel owner accounts with MFA.
 - Configure OTP limits and decide whether CAPTCHA is required before wider exposure.
@@ -40,7 +40,7 @@ The repository includes `.github/workflows/ci.yml`, triggered by pull requests a
    npm run build
    ```
 
-After pushing the workflow, confirm its first successful run. Then require the `Validate application and database` check in GitHub branch protection before merging to `main`.
+The workflow has passed on GitHub. The `main` ruleset requires pull requests and the `Validate application and database` check before merging.
 
 The validation workflow needs no production Supabase or Vercel secrets because it uses mock browser data and the local Docker database. Keep production migration deployment in a separate protected workflow using GitHub environment approvals.
 

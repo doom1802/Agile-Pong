@@ -33,7 +33,7 @@ Verified on 2026-07-01:
 - TypeScript typecheck passes.
 - Production build passes.
 - Vitest passes: 6 tests.
-- Supabase pgTAP passes: 63 tests across 3 files.
+- Supabase pgTAP passes: 65 tests across 3 files.
 - Multi-session confirmation test observes the PostgreSQL row-lock wait and proves Elo is applied once.
 - Playwright passes: 16 tests across desktop Chromium and mobile WebKit.
 - Docker CLI is available from `~/.local/bin/docker` and connects to Docker Desktop.
@@ -45,7 +45,7 @@ Verified on 2026-07-01:
 
 In progress:
 
-- Production dashboard security checks and release automation validation remain open.
+- Production dashboard security remediation and deployment configuration remain open.
 - The current implementation is still an uncommitted local working tree and needs to be consolidated into reviewed commits.
 
 The application must not be deployed as a finished product until all P0 items below are complete.
@@ -139,7 +139,7 @@ Profile nicknames are also unique case-insensitively at the database boundary, w
 
 ### 8. Production security review
 
-**Status: In progress.** Server Actions, SSR sessions, RLS/RPC boundaries, production mock protection, dependency audit and security headers have been reviewed and hardened. All migrations are applied to the hosted database and production SMTP delivery has been tested. Dashboard verification remains for Security Advisor, SSL/network settings, OTP limits and CAPTCHA.
+**Status: In progress.** Server Actions, SSR sessions, RLS/RPC boundaries, production mock protection, dependency audit and security headers have been reviewed and hardened. Production SMTP delivery has been tested. Security Advisor reports no errors: authenticated match-command warnings are intentional, password-leak protection does not apply to OTP-only authentication, and a migration now revokes API execution of the administrative `rls_auto_enable` helper. Applying that migration to production plus SSL/network, OTP-limit and CAPTCHA checks remain open.
 
 - Review every Server Action as an untrusted public endpoint.
 - Confirm no secret/service-role key is exposed or used by browser code.
@@ -153,7 +153,7 @@ Profile nicknames are also unique case-insensitively at the database boundary, w
 
 ### 9. Continuous integration
 
-**Status: In progress.** `.github/workflows/ci.yml` now validates dependencies, lint, types, unit tests, migrations/database behavior, browser flows and the production build. The workflow still needs its first successful GitHub run and branch protection must require it before merging.
+**Status: Complete.** `.github/workflows/ci.yml` validates dependencies, lint, types, unit tests, migrations/database behavior, browser flows and the production build. Its first run passed on GitHub, and the `main` ruleset now requires pull requests and the CI status check.
 
 - Add GitHub Actions for lint, typecheck, production build and tests.
 - Verify generated Supabase types are committed and current.
@@ -208,8 +208,8 @@ Deploy only when:
 
 ## Next execution order
 
-1. Commit and push the CI workflow, confirm its first successful GitHub run and require it in branch protection.
-2. Complete the remaining Supabase dashboard checks: Security Advisor, SSL/network settings, OTP limits and CAPTCHA decision.
+1. Merge and deploy the `rls_auto_enable` privilege remediation, then refresh Security Advisor.
+2. Complete the remaining Supabase dashboard checks: SSL/network settings, OTP limits and CAPTCHA decision.
 3. Refresh architecture/deployment documentation and verify Vercel production configuration.
 4. Decide shared-project data handling and complete a backup/restore drill.
-5. Consolidate the local working tree into focused commits and perform the final release-gate run from a clean checkout.
+5. Perform the final release-gate run from a clean checkout.
