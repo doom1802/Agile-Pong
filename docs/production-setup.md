@@ -14,17 +14,21 @@ Completed in code and local validation:
 - CSP, clickjacking, MIME sniffing, referrer, opener, permissions and production HSTS headers are configured.
 - `npm audit --omit=dev` reports zero vulnerabilities after the PostCSS security override.
 - Local PL/pgSQL lint reports no schema errors; database, concurrency and browser suites pass.
-- All seven migrations are applied to the hosted Supabase project.
+- Every migration currently merged to `main` is applied to the hosted Supabase project.
 - Linked database lint reports no schema errors; one non-blocking unused-variable warning remains in `private.create_match_command`.
 - Production SMTP delivery has been verified with a real company account.
+- SSL enforcement is enabled and Auth rate limits have been reviewed.
+- Vercel production login, onboarding and profile edits have been smoke-tested.
+- Automatic production database deployment completed successfully.
+- Security Advisor reports zero errors and six reviewed warnings.
 
-Required dashboard checks before release:
+Remaining operational checks before wider rollout:
 
-- Security Advisor has been reviewed: match-command warnings are intentional, password-leak protection is not applicable to OTP-only Auth, and `202607010001_restrict_rls_auto_enable.sql` remediates the exposed administrative helper. Apply it to production and refresh the advisor.
-- Enable database SSL enforcement and review network restrictions.
+- Network restrictions are intentionally deferred because GitHub-hosted migration runners use dynamic IPs; revisit if deployments move to a fixed egress runner.
 - Protect Supabase, GitHub and Vercel owner accounts with MFA.
-- Configure OTP limits and decide whether CAPTCHA is required before wider exposure.
-- Decide the avatar policy before release: keep data-only avatars temporarily or implement Supabase Storage validation/RLS.
+- CAPTCHA is deferred for the internal company-domain rollout and must be reconsidered before public exposure.
+- Merge and production-test compressed avatar uploads backed by Supabase Storage.
+- Complete a backup/restore drill.
 
 ## GitHub Actions CI
 
@@ -65,8 +69,8 @@ Do not expose these values to pull-request workflows or Vercel. Keep migrations 
 
    ```text
    NEXT_PUBLIC_APP_NAME=Agile Pong
-   NEXT_PUBLIC_APP_URL=https://<production-domain>
-   NEXT_PUBLIC_SUPABASE_URL=https://<project-ref>.supabase.co
+   NEXT_PUBLIC_APP_URL=https://agile-pong.vercel.app
+   NEXT_PUBLIC_SUPABASE_URL=https://cpzdfvhrgagfclcqbamo.supabase.co
    NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=<publishable-key>
    ALLOWED_EMAIL_DOMAIN=agilelab.it
    AUTH_BACKEND=supabase
@@ -75,8 +79,8 @@ Do not expose these values to pull-request workflows or Vercel. Keep migrations 
 
 3. Never add a service-role/secret key to Vercel for the current application. Do not configure `MOCK_LOGIN_CODE` in Production.
 4. In Supabase **Authentication > URL Configuration** set:
-   - Site URL: the exact production URL.
-   - Redirect URLs: `http://localhost:3001/**`, the exact production URL, and—only if previews use Auth—`https://*-<vercel-team-slug>.vercel.app/**`.
+   - Site URL: `https://agile-pong.vercel.app`.
+   - Redirect URLs: `http://localhost:3001/**` and `https://agile-pong.vercel.app/**`.
 5. Apply migrations with a reviewed deployment step, then regenerate and commit database types.
 6. Smoke-test login, onboarding, profile update, singles/doubles flow, logout and mobile layout on the Vercel production domain.
 
@@ -88,7 +92,11 @@ In Supabase **Authentication > Rate Limits**:
 - Start with a conservative project OTP limit appropriate for the internal company population (for example 60 per hour) and raise it only from observed demand.
 - Keep verification rate limits enabled; do not implement an in-memory Vercel limiter because serverless instances do not share state.
 
-In **Authentication > Bot and Abuse Protection**, enable Cloudflare Turnstile or hCaptcha before public exposure. Add the provider's client integration before enabling enforcement, otherwise login requests will fail.
+CAPTCHA is intentionally disabled for the initial company-domain-only rollout. Before public exposure, integrate Cloudflare Turnstile or hCaptcha in the client before enabling dashboard enforcement, otherwise login requests will fail.
+
+## Profile avatars
+
+Profile images are cropped and compressed in the browser to a 384×384 JPEG before submission. The server accepts at most 512 KB, verifies JPEG bytes and uploads to `avatars/<user-id>/avatar.jpg`. Storage policies allow authenticated users to insert, replace or delete only objects under their own user-ID folder. The bucket is public-read so avatar URLs render without distributing signed URLs; do not use it for sensitive images.
 
 Production SMTP delivery is verified with one real `@agilelab.it` account. Before wider rollout, confirm delivery and spam placement with at least one additional recipient. The configured SMTP service should retain:
 

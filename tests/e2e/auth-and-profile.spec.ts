@@ -19,9 +19,18 @@ test("supports mock login, profile editing, and logout", async ({ page }) => {
   await login(page)
   await page.goto("/profile")
   await page.getByLabel("Nickname").fill("Dome E2E")
+  await page.getByRole("button", { name: /profile photo/i }).click()
+  await page.locator('input[type="file"]').setInputFiles({
+    name: "avatar.png",
+    mimeType: "image/png",
+    buffer: Buffer.from("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=", "base64")
+  })
+  await expect(page.locator('input[name="avatarUrl"]')).toHaveValue(/^data:image\/jpeg;base64,/)
+  await page.getByRole("button", { name: "Done" }).click()
   await page.getByRole("button", { name: /save/i }).click()
   await expect(page).toHaveURL(/\/$/)
   await page.goto("/profile")
+  await expect(page.locator('input[name="avatarUrl"]')).toHaveValue(/^data:image\/jpeg;base64,/)
   await page.getByRole("button", { name: /logout/i }).click()
   await expect(page).toHaveURL(/\/login/)
 })

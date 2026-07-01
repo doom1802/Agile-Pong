@@ -26,6 +26,8 @@ Completed:
 - Scheduled confirmation of submitted matches after 24 hours.
 - Security headers and production hard-disable for mock backends.
 - Vitest, Playwright and pgTAP test infrastructure.
+- GitHub CI, protected `main` pull-request flow and automatic production database migrations.
+- Vercel production deployment at `https://agile-pong.vercel.app`.
 
 Verified on 2026-07-01:
 
@@ -33,20 +35,25 @@ Verified on 2026-07-01:
 - TypeScript typecheck passes.
 - Production build passes.
 - Vitest passes: 6 tests.
-- Supabase pgTAP passes: 65 tests across 3 files.
+- Supabase pgTAP passes: 69 tests across 3 files.
 - Multi-session confirmation test observes the PostgreSQL row-lock wait and proves Elo is applied once.
 - Playwright passes: 16 tests across desktop Chromium and mobile WebKit.
 - Docker CLI is available from `~/.local/bin/docker` and connects to Docker Desktop.
 - `npm audit --omit=dev` reports zero known vulnerabilities.
 - Local database lint reports no schema errors.
-- The hosted Supabase project contains all seven local migrations.
+- The hosted Supabase project is current through the latest merged migration; avatar Storage is pending this branch.
 - Linked database lint reports no schema errors (one non-blocking unused-variable warning remains).
 - Production SMTP successfully delivers an OTP to a company account.
+- Production login, OTP verification, onboarding and profile edits pass on Vercel.
+- Supabase SSL enforcement is enabled; Auth URLs and conservative rate limits are configured.
+- Security Advisor reports zero errors and only six reviewed warnings.
+- The production migration workflow completed its first successful deployment.
 
 In progress:
 
-- Production dashboard security remediation and deployment configuration remain open.
-- The current implementation is still an uncommitted local working tree and needs to be consolidated into reviewed commits.
+- Profile photos are being moved from inline data URLs to compressed Supabase Storage objects.
+- A real two-account production match confirmation remains to be smoke-tested with a colleague.
+- Backup/restore validation, observability and final documentation cleanup remain open.
 
 The application must not be deployed as a finished product until all P0 items below are complete.
 
@@ -115,7 +122,7 @@ Profile nicknames are also unique case-insensitively at the database boundary, w
 
 ### 6. Database and RLS tests
 
-**Status: Complete.** The local suite has 63 passing pgTAP assertions covering protected writes, anonymous access, nickname uniqueness, initialization, participant roles, repeated requests and transactional rating outcomes, plus a passing two-session lock/concurrency test.
+**Status: Complete.** The local suite has 69 passing pgTAP assertions covering protected writes, anonymous access, nickname uniqueness, initialization, participant roles, avatar Storage policy, repeated requests and transactional rating outcomes, plus a passing two-session lock/concurrency test.
 
 - Add pgTAP tests for profile access and protected columns.
 - Verify anonymous users cannot read company data.
@@ -139,7 +146,7 @@ Profile nicknames are also unique case-insensitively at the database boundary, w
 
 ### 8. Production security review
 
-**Status: In progress.** Server Actions, SSR sessions, RLS/RPC boundaries, production mock protection, dependency audit and security headers have been reviewed and hardened. Production SMTP delivery has been tested. Security Advisor reports no errors: authenticated match-command warnings are intentional, password-leak protection does not apply to OTP-only authentication, and a migration now revokes API execution of the administrative `rls_auto_enable` helper. Applying that migration to production plus SSL/network, OTP-limit and CAPTCHA checks remain open.
+**Status: Complete for internal rollout.** Server Actions, SSR sessions, RLS/RPC boundaries, production mock protection, dependency audit and security headers are hardened. SMTP, Auth URLs, OTP limits and SSL enforcement are verified. Security Advisor reports zero errors; its five authenticated match-command warnings are intentional and password-leak protection does not apply to OTP-only authentication. Network restrictions remain open by design because GitHub-hosted migration runners use dynamic IPs. CAPTCHA is deferred for the company-domain-only internal rollout and must be reconsidered before public exposure.
 
 - Review every Server Action as an untrusted public endpoint.
 - Confirm no secret/service-role key is exposed or used by browser code.
@@ -162,7 +169,7 @@ Profile nicknames are also unique case-insensitively at the database boundary, w
 
 ### 10. Environment and deployment configuration
 
-**Status: In progress.** Production mock mode is hard-disabled, hosted migrations are current, SMTP delivery is verified and required checks are documented. A protected GitHub workflow now applies pending Supabase migrations on every push to `main`; its production secrets and first successful run still need configuration. Vercel configuration, shared-project data handling and backup procedures remain open.
+**Status: In progress.** Production mock mode is hard-disabled, Vercel is live, Auth/SMTP configuration is verified, and the protected GitHub workflow has successfully applied a production migration. Shared-project data handling and a backup/restore drill remain open.
 
 - Keep mock backends disabled in production regardless of environment mistakes.
 - Document all required Vercel variables.
@@ -188,7 +195,7 @@ Profile nicknames are also unique case-insensitively at the database boundary, w
 - Implement admin correction/deletion with audit events.
 - Implement dispute and cancellation flows if retained in the domain model.
 - Add season rollover automation and archive views.
-- Add avatar storage with safe file validation and Storage RLS.
+- Complete and production-verify compressed avatar Storage with file validation and owner-only write policies.
 - Complete badges using confirmed real matches only.
 - Add empty/loading/error states across all data pages.
 - Add observability for failed Auth, RPC and database operations without logging sensitive data.
@@ -196,7 +203,7 @@ Profile nicknames are also unique case-insensitively at the database boundary, w
 
 ## Final release gate
 
-Deploy only when:
+Before wider company rollout:
 
 - Every P0 item is complete.
 - CI is green from a clean checkout.
@@ -208,8 +215,8 @@ Deploy only when:
 
 ## Next execution order
 
-1. Configure the GitHub `production` environment secrets, merge the `rls_auto_enable` remediation and verify its automatic database deployment.
-2. Refresh Security Advisor, then complete SSL/network settings, OTP limits and the CAPTCHA decision.
-3. Refresh architecture/deployment documentation and verify Vercel production configuration.
-4. Decide shared-project data handling and complete a backup/restore drill.
-5. Perform the final release-gate run from a clean checkout.
+1. Merge and production-verify compressed avatar Storage.
+2. Run a real two-account match smoke test: create, submit, opposite-side confirm and verify Elo/history.
+3. Decide shared-project data handling and complete a backup/restore drill.
+4. Add production observability for Auth, RPC and database failures without sensitive data.
+5. Refresh architecture/state-machine documentation and perform the final release-gate run from a clean checkout.

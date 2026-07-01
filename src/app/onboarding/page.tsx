@@ -18,6 +18,7 @@ export default async function OnboardingPage({ searchParams }: { searchParams: P
         <p className="eyebrow">Profile</p>
         <h1 style={{ fontSize: 44 }}>Pick your table name</h1>
         {params.error === "invalid" ? <p className="pill gold">Complete every required profile field.</p> : null}
+        {params.error === "avatar" ? <p className="pill gold">The profile photo could not be uploaded. Try another image.</p> : null}
         <ProfileForm error={params.error} user={user} />
       </section>
     </main>

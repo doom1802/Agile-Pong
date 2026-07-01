@@ -2,6 +2,7 @@
 
 import { revalidatePath } from "next/cache"
 import { redirect } from "next/navigation"
+import { Buffer } from "node:buffer"
 import { z } from "zod"
 import { parseSetScores, validateMatchSets } from "@/domain/scores"
 import { createClient } from "@/lib/supabase/server"
@@ -94,7 +95,10 @@ const profileSchema = z.object({
   firstName: z.string().trim().min(1).max(80),
   lastName: z.string().trim().min(1).max(80),
   nickname: z.string().trim().min(1).max(40),
-  avatarUrl: z.string().trim().max(2048),
+  avatarUrl: z.string().trim().max(700_000).refine(
+    (value) => value === "" || value.startsWith("https://") || /^data:image\/jpeg;base64,[A-Za-z0-9+/=]+$/.test(value),
+    "Invalid avatar"
+  ),
   officeLocation: z.string().trim().min(1).max(120)
 })
 
@@ -113,6 +117,10 @@ export const saveProfile = async (formData: FormData) => {
     redirect(`${profilePath}?error=invalid`)
   }
 
+  if (parsed.data.avatarUrl.startsWith("https://") && parsed.data.avatarUrl !== user.avatarUrl) {
+    redirect(`${profilePath}?error=invalid`)
+  }
+
   if (isMockAuthEnabled) {
     try {
       await db.updateProfile(user.id, parsed.data)
@@ -125,13 +133,33 @@ export const saveProfile = async (formData: FormData) => {
   }
 
   const supabase = await createClient()
+  let avatarUrl = parsed.data.avatarUrl
+
+  if (avatarUrl.startsWith("data:image/jpeg;base64,")) {
+    const encoded = avatarUrl.slice("data:image/jpeg;base64,".length)
+    const image = Buffer.from(encoded, "base64")
+    const isJpeg = image.length >= 3 && image[0] === 0xff && image[1] === 0xd8 && image[2] === 0xff
+    if (!isJpeg || image.length > 512 * 1024) redirect(`${profilePath}?error=invalid`)
+
+    const objectPath = `${user.id}/avatar.jpg`
+    const { error: uploadError } = await supabase.storage
+      .from("avatars")
+      .upload(objectPath, image, { cacheControl: "3600", contentType: "image/jpeg", upsert: true })
+    if (uploadError) redirect(`${profilePath}?error=avatar`)
+
+    const { data } = supabase.storage.from("avatars").getPublicUrl(objectPath)
+    avatarUrl = `${data.publicUrl}?v=${Date.now()}`
+  } else if (!avatarUrl && user.avatarUrl.includes("/storage/v1/object/public/avatars/")) {
+    await supabase.storage.from("avatars").remove([`${user.id}/avatar.jpg`])
+  }
+
   const { error } = await supabase
     .from("profiles")
     .update({
       first_name: parsed.data.firstName,
       last_name: parsed.data.lastName,
       nickname: parsed.data.nickname,
-      avatar_url: parsed.data.avatarUrl,
+      avatar_url: avatarUrl,
       office_location: parsed.data.officeLocation
     })
     .eq("id", user.id)

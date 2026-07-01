@@ -1,5 +1,5 @@
 begin;
-select plan(17);
+select plan(21);
 
 select has_table('public', 'profiles', 'profiles exists');
 select has_table('public', 'matches', 'matches exists');
@@ -32,6 +32,20 @@ select ok(
   end,
   'authenticated users cannot execute the RLS administration helper'
 );
+
+select ok(
+  exists (
+    select 1 from storage.buckets
+    where id = 'avatars'
+      and public
+      and file_size_limit = 524288
+      and allowed_mime_types = array['image/jpeg']::text[]
+  ),
+  'avatar bucket has the expected public-read and upload restrictions'
+);
+select ok(exists (select 1 from pg_policies where schemaname = 'storage' and tablename = 'objects' and policyname = 'avatars_insert_own'), 'avatar insert policy exists');
+select ok(exists (select 1 from pg_policies where schemaname = 'storage' and tablename = 'objects' and policyname = 'avatars_update_own'), 'avatar update policy exists');
+select ok(exists (select 1 from pg_policies where schemaname = 'storage' and tablename = 'objects' and policyname = 'avatars_delete_own'), 'avatar delete policy exists');
 
 select * from finish();
 rollback;
