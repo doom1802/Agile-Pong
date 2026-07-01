@@ -16,6 +16,7 @@ export type Database = {
     Tables: {
       match_events: {
         Row: {
+          automatic: boolean
           created_at: string
           id: string
           match_id: string
@@ -23,6 +24,7 @@ export type Database = {
           user_id: string
         }
         Insert: {
+          automatic?: boolean
           created_at?: string
           id?: string
           match_id: string
@@ -30,6 +32,7 @@ export type Database = {
           user_id: string
         }
         Update: {
+          automatic?: boolean
           created_at?: string
           id?: string
           match_id?: string
@@ -133,6 +136,7 @@ export type Database = {
       matches: {
         Row: {
           anti_farming_factor: number
+          auto_confirmed_at: string | null
           best_of: number | null
           confirmed_by_user_id: string | null
           created_at: string
@@ -151,6 +155,7 @@ export type Database = {
         }
         Insert: {
           anti_farming_factor?: number
+          auto_confirmed_at?: string | null
           best_of?: number | null
           confirmed_by_user_id?: string | null
           created_at?: string
@@ -169,6 +174,7 @@ export type Database = {
         }
         Update: {
           anti_farming_factor?: number
+          auto_confirmed_at?: string | null
           best_of?: number | null
           confirmed_by_user_id?: string | null
           created_at?: string
@@ -332,6 +338,11 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      cancel_match_command: { Args: { p_match_id: string }; Returns: undefined }
+      confirm_match_result_command: {
+        Args: { p_match_id: string }
+        Returns: undefined
+      }
       create_match_command: {
         Args: {
           p_best_of: number
@@ -341,6 +352,10 @@ export type Database = {
           p_type: Database["public"]["Enums"]["match_type"]
         }
         Returns: string
+      }
+      dispute_match_command: {
+        Args: { p_match_id: string }
+        Returns: undefined
       }
       submit_match_result_command: {
         Args: { p_match_id: string; p_sets: Json }

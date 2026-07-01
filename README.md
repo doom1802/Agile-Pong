@@ -11,8 +11,8 @@ Small MVP for Agile Lab's internal ping pong ranking app.
 - Singles and doubles leaderboards.
 - Ranked and unranked match creation.
 - Match flow: ready -> submitted -> confirmed.
-- Elo-style singles and doubles rating logic.
-- Mock DB adapter designed to be replaced by Supabase/Postgres.
+- Transactional Elo, anti-farming, daily caps, and singles/doubles ratings in PostgreSQL.
+- Optional mock Auth/data adapters for isolated UI development and browser tests.
 
 ## Run locally
 
@@ -28,6 +28,27 @@ Then open `http://localhost:3001`.
 Configure Supabase using `.env.example`, then sign in with an `@agilelab.it`
 address and the one-time code delivered by email.
 
-## Where to swap the DB
+## Quality checks
 
-The app uses `src/server/db/repository.ts` as its interface and `src/server/db/mock-repository.ts` as the current implementation. Replace the implementation with a Supabase repository while keeping the rest of the app stable.
+```bash
+npm run lint
+npm run typecheck
+npm run test
+npm run test:e2e
+npm run test:db # requires Docker Desktop and `supabase start`
+npm run build
+```
+
+Playwright always starts the app with mock Auth and mock data. Database/RLS tests run against an isolated local Supabase stack and never write to the linked remote project.
+
+## Production security gate
+
+Before deployment:
+
+- Keep `AUTH_BACKEND` and `DATA_BACKEND` set to `supabase`; mock mode is also hard-disabled when `NODE_ENV=production`.
+- In Supabase Auth rate-limit settings, verify the OTP/email-send limits and SMTP quota are appropriate for the company user count.
+- Run `npm audit --omit=dev`, `npm run db:lint`, and Supabase Security Advisor; resolve or explicitly document every applicable finding.
+- Verify Site URL, allowed redirect URLs, cookie/logout behavior, and that no service-role key is present in browser or Vercel public variables.
+- Apply migrations from an empty local database and run `npm run test:db` before pushing them to the linked project.
+
+The app uses only the Supabase publishable key during normal requests. Match and rating tables are read-only to authenticated clients; state changes go through transactional RPC commands.

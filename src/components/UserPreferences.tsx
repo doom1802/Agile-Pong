@@ -62,14 +62,14 @@ export function UserPreferences() {
 
   return (
     <div className="preferences" aria-label="Display preferences">
-      <select aria-label="Theme" value={preferences.theme} onChange={(event) => setTheme(event.target.value as ThemePreference)}>
-        <option value="dark">Dark</option>
-        <option value="light">Light</option>
-      </select>
-      <select aria-label="Language" value={preferences.language} onChange={(event) => setLanguage(event.target.value as LanguagePreference)}>
-        <option value="en">EN</option>
-        <option value="it">IT</option>
-      </select>
+      <div className="preference-control" role="group" aria-label="Theme">
+        <button aria-pressed={preferences.theme === "dark"} className={preferences.theme === "dark" ? "active" : ""} type="button" onClick={() => setTheme("dark")}>Dark</button>
+        <button aria-pressed={preferences.theme === "light"} className={preferences.theme === "light" ? "active" : ""} type="button" onClick={() => setTheme("light")}>Light</button>
+      </div>
+      <div className="preference-control" role="group" aria-label="Language">
+        <button aria-pressed={preferences.language === "en"} className={preferences.language === "en" ? "active" : ""} type="button" onClick={() => setLanguage("en")}>EN</button>
+        <button aria-pressed={preferences.language === "it"} className={preferences.language === "it" ? "active" : ""} type="button" onClick={() => setLanguage("it")}>IT</button>
+      </div>
     </div>
   )
 }

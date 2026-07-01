@@ -3,11 +3,17 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "next dev -p 3001",
+    "dev": "next dev -H 127.0.0.1 -p 3001",
+    "dev:e2e": "NEXT_DIST_DIR=.next-e2e next dev -H 127.0.0.1 -p 3101",
     "build": "next build",
     "start": "next start -p 3001",
     "lint": "eslint .",
     "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "test:e2e": "playwright test",
+    "test:db": "npm run test:db:pgtap && npm run test:db:concurrency",
+    "test:db:pgtap": "supabase test db --local",
+    "test:db:concurrency": "bash supabase/tests/concurrency/confirm_match.test.sh",
     "db:lint": "supabase db lint --linked --level warning",
     "db:push": "supabase db push --linked",
     "db:types": "supabase gen types typescript --linked > src/lib/supabase/database.types.ts"
@@ -20,6 +26,9 @@
     "react-dom": "^19.2.7",
     "zod": "3.23.8"
   },
+  "overrides": {
+    "postcss": "8.5.16"
+  },
   "devDependencies": {
     "@playwright/test": "^1.61.1",
     "@types/node": "20.14.10",
@@ -28,6 +37,7 @@
     "eslint": "^9.39.4",
     "eslint-config-next": "^16.2.9",
     "supabase": "^2.108.0",
-    "typescript": "5.5.3"
+    "typescript": "5.5.3",
+    "vitest": "^4.1.9"
   }
 }

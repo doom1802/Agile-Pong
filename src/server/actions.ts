@@ -3,12 +3,11 @@
 import { revalidatePath } from "next/cache"
 import { redirect } from "next/navigation"
 import { z } from "zod"
-import { applyRating } from "@/domain/rating"
-import { parseSetScores } from "@/domain/scores"
+import { parseSetScores, validateMatchSets } from "@/domain/scores"
 import { createClient } from "@/lib/supabase/server"
 import { clearMockSessionCookie, isMockAuthEnabled, requireUser, setMockSessionCookie, validateEmail, validateMockCode } from "./auth"
-import { db, isMockDataEnabled } from "./db"
-import type { MatchPlayer, MatchWithDetails } from "./db/types"
+import { db } from "./db"
+import type { MatchPlayer } from "./db/types"
 
 export const requestLoginCode = async (formData: FormData) => {
   const email = validateEmail(String(formData.get("email") ?? ""))
@@ -86,7 +85,8 @@ export const logout = async () => {
   }
 
   const supabase = await createClient()
-  await supabase.auth.signOut()
+  const { error } = await supabase.auth.signOut()
+  if (error) throw new Error("Unable to sign out")
   redirect("/login")
 }
 
@@ -100,6 +100,7 @@ const profileSchema = z.object({
 
 export const saveProfile = async (formData: FormData) => {
   const user = await requireUser()
+  const profilePath = user.officeLocation ? "/profile" : "/onboarding"
   const parsed = profileSchema.safeParse({
     firstName: String(formData.get("firstName") ?? ""),
     lastName: String(formData.get("lastName") ?? ""),
@@ -109,11 +110,16 @@ export const saveProfile = async (formData: FormData) => {
   })
 
   if (!parsed.success) {
-    redirect("/profile?error=invalid")
+    redirect(`${profilePath}?error=invalid`)
   }
 
   if (isMockAuthEnabled) {
-    await db.updateProfile(user.id, parsed.data)
+    try {
+      await db.updateProfile(user.id, parsed.data)
+    } catch (error) {
+      if (error instanceof Error && error.message === "nickname_taken") redirect(`${profilePath}?error=nickname-taken`)
+      throw error
+    }
     revalidatePath("/")
     redirect("/")
   }
@@ -131,6 +137,7 @@ export const saveProfile = async (formData: FormData) => {
     .eq("id", user.id)
 
   if (error) {
+    if (error.code === "23505") redirect(`${profilePath}?error=nickname-taken`)
     throw new Error("Unable to save profile")
   }
 
@@ -149,25 +156,45 @@ const player = (matchId: string, userId: string, side: "A" | "B", position: 1 | 
   ratingDelta: null
 })
 
+const createMatchSchema = z.object({
+  mode: z.enum(["ranked", "unranked"]),
+  type: z.enum(["singles", "doubles"]),
+  pointsToWin: z.number().int().nullable(),
+  bestOf: z.number().int().nullable(),
+  playerIds: z.array(z.string().min(1)).min(2).max(4)
+}).superRefine((value, context) => {
+  const expected = value.type === "singles" ? 2 : 4
+  if (value.playerIds.length !== expected) context.addIssue({ code: z.ZodIssueCode.custom, message: "Invalid player count" })
+  if (new Set(value.playerIds).size !== value.playerIds.length) context.addIssue({ code: z.ZodIssueCode.custom, message: "Players must be unique" })
+  if (value.mode === "ranked" && (![11, 21].includes(value.pointsToWin ?? 0) || ![3, 5].includes(value.bestOf ?? 0))) context.addIssue({ code: z.ZodIssueCode.custom, message: "Invalid ranked format" })
+})
+
+const matchCommandSchema = z.object({ matchId: z.string().trim().min(1).max(100) })
+
 export const createMatch = async (formData: FormData) => {
   const user = await requireUser()
   const type = String(formData.get("type")) === "doubles" ? "doubles" : "singles"
   const mode = String(formData.get("mode")) === "unranked" ? "unranked" : "ranked"
   const pointsToWin = mode === "ranked" ? Number(formData.get("pointsToWin")) : Number(formData.get("pointsToWin") || 0) || null
   const bestOf = mode === "ranked" ? Number(formData.get("bestOf")) : Number(formData.get("bestOf") || 0) || null
+  const rawPlayerIds = type === "singles"
+    ? [user.id, String(formData.get("sideB1") ?? "")]
+    : [user.id, String(formData.get("sideA2") ?? ""), String(formData.get("sideB1") ?? ""), String(formData.get("sideB2") ?? "")]
+  const parsed = createMatchSchema.safeParse({ mode, type, pointsToWin, bestOf, playerIds: rawPlayerIds })
+  if (!parsed.success) redirect(`/matches/new?error=${new Set(rawPlayerIds).size !== rawPlayerIds.length ? "duplicate" : "invalid"}`)
   const ratingKind = mode === "ranked" ? (type === "singles" ? "singles" : "doubles") : "none"
   const placeholder = "pending"
   const players =
     type === "singles"
       ? [
           player(placeholder, user.id, "A", 1, ratingKind),
-          player(placeholder, String(formData.get("sideB1")), "B", 1, ratingKind)
+          player(placeholder, rawPlayerIds[1], "B", 1, ratingKind)
         ]
       : [
           player(placeholder, user.id, "A", 1, ratingKind),
-          player(placeholder, String(formData.get("sideA2")), "A", 2, ratingKind),
-          player(placeholder, String(formData.get("sideB1")), "B", 1, ratingKind),
-          player(placeholder, String(formData.get("sideB2")), "B", 2, ratingKind)
+          player(placeholder, rawPlayerIds[1], "A", 2, ratingKind),
+          player(placeholder, rawPlayerIds[2], "B", 1, ratingKind),
+          player(placeholder, rawPlayerIds[3], "B", 2, ratingKind)
         ]
 
   if (new Set(players.map((item) => item.userId)).size !== players.length) {
@@ -190,89 +217,54 @@ export const createMatch = async (formData: FormData) => {
 
 export const submitResult = async (formData: FormData) => {
   const user = await requireUser()
-  const match = await getMutableMatch(String(formData.get("matchId")))
-  const sets = parseSetScores(match.id, String(formData.get("sets") ?? ""))
-
-  if (!isMockDataEnabled) {
-    const supabase = await createClient()
-    const { error } = await supabase.rpc("submit_match_result_command", {
-      p_match_id: match.id,
-      p_sets: sets.map((set) => ({ sideAPoints: set.sideAPoints, sideBPoints: set.sideBPoints }))
-    })
-    if (error) throw new Error(error.message)
-    revalidatePath("/matches")
-    return
-  }
-
-  match.status = "submitted"
-  match.submittedByUserId = user.id
-  match.playedAt = new Date().toISOString()
-  await db.updateMatch(match)
-  await db.replaceMatchSets(match.id, sets)
-  await db.addEvent({ matchId: match.id, userId: user.id, type: "submitted" })
-  revalidatePath("/matches")
+  const parsed = matchCommandSchema.safeParse({ matchId: formData.get("matchId") })
+  if (!parsed.success) redirect("/matches?error=invalid-request")
+  let sets
+  try {
+    sets = parseSetScores(parsed.data.matchId, String(formData.get("sets") ?? ""))
+    const match = await db.getMatch(parsed.data.matchId)
+    if (!match) throw new Error("match_not_found")
+    validateMatchSets(match, sets)
+  } catch { redirect("/matches?error=invalid-score") }
+  try { await db.submitMatchResult(parsed.data.matchId, user.id, sets) } catch (error) { redirect(`/matches?error=${commandError(error)}`) }
+  revalidateMatchViews()
 }
 
 export const confirmResult = async (formData: FormData) => {
   const user = await requireUser()
-  const match = await getMutableMatch(String(formData.get("matchId")))
+  await runMatchCommand(formData, (matchId) => db.confirmMatchResult(matchId, user.id))
+}
 
-  if (match.mode === "ranked" && !match.ratingApplied) {
-    const ratings = await db.getRatings()
-    const recentSameMatchupCount = await countRecentSameMatchups(match)
-    const application = applyRating(match, ratings, recentSameMatchupCount)
+export const cancelMatch = async (formData: FormData) => {
+  const user = await requireUser()
+  await runMatchCommand(formData, (matchId) => db.cancelMatch(matchId, user.id))
+}
 
-    for (const rating of application.ratings) {
-      await db.updateRating(rating)
-    }
+export const disputeMatch = async (formData: FormData) => {
+  const user = await requireUser()
+  await runMatchCommand(formData, (matchId) => db.disputeMatch(matchId, user.id))
+}
 
-    await db.updateMatchPlayers(match.id, application.matchPlayers)
-    match.winnerSide = application.winnerSide
-    match.antiFarmingFactor = application.antiFarmingFactor
-    match.ratingApplied = true
-  }
+const runMatchCommand = async (formData: FormData, command: (matchId: string) => Promise<void>) => {
+  const parsed = matchCommandSchema.safeParse({ matchId: formData.get("matchId") })
+  if (!parsed.success) redirect("/matches?error=invalid-request")
+  try { await command(parsed.data.matchId) } catch (error) { redirect(`/matches?error=${commandError(error)}`) }
+  revalidateMatchViews()
+}
 
-  if (match.mode === "unranked") {
-    match.winnerSide = match.sets.filter((set) => set.sideAPoints > set.sideBPoints).length > match.sets.length / 2 ? "A" : "B"
-  }
-
-  match.status = "confirmed"
-  match.confirmedByUserId = user.id
-  await db.updateMatch(match)
-  await db.addEvent({ matchId: match.id, userId: user.id, type: "confirmed" })
+const revalidateMatchViews = () => {
   revalidatePath("/")
   revalidatePath("/matches")
   revalidatePath("/leaderboard")
+  revalidatePath("/players", "layout")
 }
 
-const getMutableMatch = async (id: string): Promise<MatchWithDetails> => {
-  const match = await db.getMatch(id)
-  if (!match) {
-    throw new Error("Match not found")
-  }
-
-  return match
-}
-
-const countRecentSameMatchups = async (match: MatchWithDetails) => {
-  const matches = await db.getMatches()
-  const cutoff = Date.now() - 1000 * 60 * 60 * 24 * 7
-  const key = matchupKey(match)
-
-  return matches.filter((candidate) => candidate.id !== match.id && candidate.mode === "ranked" && candidate.status === "confirmed" && new Date(candidate.createdAt).getTime() > cutoff && matchupKey(candidate) === key).length + 1
-}
-
-const matchupKey = (match: MatchWithDetails) => {
-  const sideA = match.players
-    .filter((candidate) => candidate.side === "A")
-    .map((candidate) => candidate.userId)
-    .sort()
-    .join("+")
-  const sideB = match.players
-    .filter((candidate) => candidate.side === "B")
-    .map((candidate) => candidate.userId)
-    .sort()
-    .join("+")
-
-  return [sideA, sideB].sort().join("::")
+const commandError = (error: unknown) => {
+  const message = error instanceof Error ? error.message : ""
+  if (message.includes("opposite_side")) return "opposite-side-required"
+  if (message.includes("not_a_participant") || message.includes("permission")) return "not-authorized"
+  if (message.includes("score") || message.includes("sets_") || message.includes("winning_sets")) return "invalid-score"
+  if (message.includes("not_ready") || message.includes("not_submitted")) return "invalid-state"
+  if (message.includes("not_found")) return "not-found"
+  return "command-failed"
 }

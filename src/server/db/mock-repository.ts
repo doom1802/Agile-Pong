@@ -1,4 +1,5 @@
 import { randomUUID } from "crypto"
+import { applyRating, deriveWinner } from "@/domain/rating"
 import { createInitialStore, ensureSeededMatches, type MockStore } from "./mock-data"
 import type { CreateMatchInput, Repository } from "./repository"
 import type { Match, MatchEvent, MatchPlayer, MatchSet, MatchWithDetails, PlayerRating, Session, User } from "./types"
@@ -81,6 +82,14 @@ export const mockRepository: Repository = {
 
     if (!user) {
       throw new Error("User not found")
+    }
+
+    if (profile.nickname) {
+      const normalizedNickname = profile.nickname.trim().toLowerCase()
+      const duplicate = store().users.some((candidate) =>
+        candidate.id !== userId && candidate.nickname.trim().toLowerCase() === normalizedNickname
+      )
+      if (duplicate) throw new Error("nickname_taken")
     }
 
     Object.assign(user, profile, { updatedAt: now() })
@@ -181,6 +190,88 @@ export const mockRepository: Repository = {
     return match
   },
 
+  async submitMatchResult(matchId, userId, sets) {
+    const match = store().matches.find((candidate) => candidate.id === matchId)
+    if (!match) throw new Error("match_not_found")
+    if (match.status !== "ready") throw new Error("match_not_ready")
+    if (!match.players.some((player) => player.userId === userId)) throw new Error("not_a_participant")
+    match.sets = sets
+    match.status = "submitted"
+    match.submittedByUserId = userId
+    match.playedAt = now()
+    await this.addEvent({ matchId, userId, type: "submitted" })
+  },
+
+  async confirmMatchResult(matchId, userId) {
+    const match = store().matches.find((candidate) => candidate.id === matchId)
+    if (!match) throw new Error("match_not_found")
+    if (match.status === "confirmed" && match.confirmedByUserId === userId) return
+    if (match.status !== "submitted") throw new Error("match_not_submitted")
+    const submitter = match.players.find((player) => player.userId === match.submittedByUserId)
+    const confirmer = match.players.find((player) => player.userId === userId)
+    if (!confirmer) throw new Error("not_a_participant")
+    if (!submitter || submitter.side === confirmer.side) throw new Error("confirmation_requires_opposite_side")
+
+    match.winnerSide = deriveWinner(match.sets)
+    if (match.mode === "ranked") {
+      const cutoff = Date.now() - 7 * 24 * 60 * 60 * 1000
+      const key = matchupKey(match)
+      const count = store().matches.filter((candidate) => candidate.id !== match.id && candidate.mode === "ranked" && candidate.status === "confirmed" && new Date(candidate.playedAt ?? candidate.createdAt).getTime() >= cutoff && matchupKey(candidate) === key).length + 1
+      const application = applyRating(match, store().ratings, count)
+      const day = (match.playedAt ?? now()).slice(0, 10)
+      for (const side of ["A", "B"] as const) {
+        const players = application.matchPlayers.filter((player) => player.side === side)
+        const desired = players[0]?.ratingDelta ?? 0
+        const room = Math.min(...players.map((player) => {
+          const used = store().matches.flatMap((candidate) => candidate.status === "confirmed" && (candidate.playedAt ?? "").slice(0, 10) === day ? candidate.players : []).filter((old) => old.userId === player.userId).reduce((sum, old) => sum + (old.ratingDelta ?? 0), 0)
+          return desired >= 0 ? 80 - used : 80 + used
+        }))
+        const common = Math.sign(desired) * Math.max(0, Math.min(Math.abs(desired), room))
+        for (const player of players) {
+          player.ratingDelta = common
+          player.ratingAfter = (player.ratingBefore ?? 1000) + common
+        }
+      }
+      match.players = application.matchPlayers
+      match.antiFarmingFactor = application.antiFarmingFactor
+      for (const player of match.players) {
+        const rating = store().ratings.find((candidate) => candidate.userId === player.userId)
+        if (!rating) continue
+        if (match.type === "singles") {
+          rating.singlesRating = player.ratingAfter ?? rating.singlesRating
+          rating.singlesRankedMatches += 1
+        } else {
+          rating.doublesRating = player.ratingAfter ?? rating.doublesRating
+          rating.doublesRankedMatches += 1
+        }
+      }
+      match.ratingApplied = true
+    }
+    match.status = "confirmed"
+    match.confirmedByUserId = userId
+    await this.addEvent({ matchId, userId, type: "confirmed" })
+  },
+
+  async cancelMatch(matchId, userId) {
+    const match = store().matches.find((candidate) => candidate.id === matchId)
+    if (!match) throw new Error("match_not_found")
+    if (!match.players.some((player) => player.userId === userId)) throw new Error("not_a_participant")
+    if (match.status === "cancelled") return
+    if (match.status !== "ready") throw new Error("match_not_ready")
+    match.status = "cancelled"
+    await this.addEvent({ matchId, userId, type: "cancelled" })
+  },
+
+  async disputeMatch(matchId, userId) {
+    const match = store().matches.find((candidate) => candidate.id === matchId)
+    if (!match) throw new Error("match_not_found")
+    if (!match.players.some((player) => player.userId === userId)) throw new Error("not_a_participant")
+    if (match.status === "disputed") return
+    if (match.status !== "submitted") throw new Error("match_not_submitted")
+    match.status = "disputed"
+    await this.addEvent({ matchId, userId, type: "disputed" })
+  },
+
   async getMatches() {
     return store().matches.map((match) => ({ ...match, players: [...match.players], sets: [...match.sets], events: [...match.events] }))
   },
@@ -227,3 +318,5 @@ export const mockRepository: Repository = {
     match.events.push({ ...event, id: randomUUID(), createdAt: now() })
   }
 }
+
+const matchupKey = (match: MatchWithDetails) => ["A", "B"].map((side) => match.players.filter((player) => player.side === side).map((player) => player.userId).sort().join("+")).sort().join("::")

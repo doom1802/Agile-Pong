@@ -11,7 +11,7 @@ Agile Pong is an internal **Agile Lab** web app for tracking ping pong matches b
 - Login: company email + one-time code by email, no passwords.
 - Allowed email domain: `@agilelab.it`.
 - Session: long-lived, roughly 30 days.
-- Profile: first name, last name, nickname, profile photo, usual office/location as free text.
+- Profile: first name, last name, unique case-insensitive nickname, profile photo, usual office/location as free text.
 - Admins exist in the MVP and are marked by a database field.
 - Match types: singles and doubles.
 - Rankings: separate singles and doubles rankings.

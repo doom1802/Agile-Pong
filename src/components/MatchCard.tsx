@@ -1,4 +1,4 @@
-import { confirmResult, submitResult } from "@/server/actions"
+import { cancelMatch, confirmResult, disputeMatch, submitResult } from "@/server/actions"
 import { expectedScore } from "@/domain/rating"
 import type { MatchWithDetails, PlayerRating, User } from "@/server/db/types"
 import { displayName, signed } from "@/lib/format"
@@ -9,6 +9,9 @@ export function MatchCard({ match, users, ratings, currentUserId }: { match: Mat
   const sideA = namesForSide(match, users, "A")
   const sideB = namesForSide(match, users, "B")
   const canAct = match.players.some((player) => player.userId === currentUserId)
+  const currentSide = match.players.find((player) => player.userId === currentUserId)?.side
+  const submitterSide = match.players.find((player) => player.userId === match.submittedByUserId)?.side
+  const canConfirm = canAct && match.status === "submitted" && currentSide !== submitterSide
   const preview = buildPrematchPreview(match, ratings, users)
 
   return (
@@ -49,6 +52,7 @@ export function MatchCard({ match, users, ratings, currentUserId }: { match: Mat
 
       {canAct && match.status === "ready" ? (
         <>
+          <ScoreEntryForm action={submitResult} bestOf={match.bestOf} matchId={match.id} sideAName={preview.sideAName} sideBName={preview.sideBName} />
           <Link className="button secondary" href={`/matches?prematch=${match.id}`}>
             Open match intro
           </Link>
@@ -79,18 +83,30 @@ export function MatchCard({ match, users, ratings, currentUserId }: { match: Mat
               <div className="insight">{preview.underdogName} is the underdog. A win would move the leaderboard.</div>
             </div>
           </section>
-          <ScoreEntryForm action={submitResult} bestOf={match.bestOf} matchId={match.id} sideAName={preview.sideAName} sideBName={preview.sideBName} />
+          <form action={cancelMatch}>
+            <input name="matchId" type="hidden" value={match.id} />
+            <button className="button secondary" type="submit">Cancel match</button>
+          </form>
         </>
       ) : null}
 
       {canAct && match.status === "submitted" ? (
-        <form action={confirmResult}>
-          <input name="matchId" type="hidden" value={match.id} />
-          <button className="button warning" type="submit">
-            Confirm result
-          </button>
-        </form>
+        <div className="status-line">
+          {canConfirm ? (
+            <form action={confirmResult}>
+              <input name="matchId" type="hidden" value={match.id} />
+              <button className="button warning" type="submit">Confirm result</button>
+            </form>
+          ) : <span className="subtle">Waiting for the opposite side to confirm.</span>}
+          <form action={disputeMatch}>
+            <input name="matchId" type="hidden" value={match.id} />
+            <button className="button secondary" type="submit">Dispute result</button>
+          </form>
+        </div>
       ) : null}
+
+      {match.status === "disputed" ? <p className="pill gold">Result disputed. No rating was applied.</p> : null}
+      {match.status === "cancelled" ? <p className="subtle">This match was cancelled.</p> : null}
     </article>
   )
 }

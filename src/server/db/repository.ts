@@ -31,6 +31,10 @@ export type Repository = {
   getSessionByToken(token: string): Promise<Session | null>
   revokeSession(token: string): Promise<void>
   createMatch(input: CreateMatchInput): Promise<MatchWithDetails>
+  submitMatchResult(matchId: string, userId: string, sets: MatchSet[]): Promise<void>
+  confirmMatchResult(matchId: string, userId: string): Promise<void>
+  cancelMatch(matchId: string, userId: string): Promise<void>
+  disputeMatch(matchId: string, userId: string): Promise<void>
   getMatches(): Promise<MatchWithDetails[]>
   getMatch(id: string): Promise<MatchWithDetails | null>
   updateMatch(match: Match): Promise<void>

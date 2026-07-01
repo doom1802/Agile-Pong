@@ -1,13 +1,15 @@
 import { AppShell } from "@/components/AppShell"
 import { AvatarPicker } from "@/components/AvatarPicker"
+import { CreditsFooter } from "@/components/CreditsFooter"
 import { UserPreferences } from "@/components/UserPreferences"
 import { logout, saveProfile } from "@/server/actions"
 import { requireUser } from "@/server/auth"
 import { avatarTheme, initials } from "@/lib/format"
 import Link from "next/link"
 
-export default async function ProfilePage() {
+export default async function ProfilePage({ searchParams }: { searchParams: Promise<{ error?: string }> }) {
   const user = await requireUser()
+  const params = await searchParams
 
   return (
     <AppShell user={user}>
@@ -16,6 +18,7 @@ export default async function ProfilePage() {
           <p className="eyebrow">Profile</p>
           <h1>Your profile</h1>
           <p className="subtle">This is what colleagues see around matches and leaderboards.</p>
+          {params.error === "invalid" ? <p className="pill gold">Check the profile fields and try again.</p> : null}
         </div>
       </div>
       <section className="panel">
@@ -33,7 +36,14 @@ export default async function ProfilePage() {
           <div className="grid two">
             <label className="field">
               <span>Nickname</span>
-              <input className="input" defaultValue={user.nickname} name="nickname" />
+              <input
+                aria-describedby={params.error === "nickname-taken" ? "profile-nickname-error" : undefined}
+                aria-invalid={params.error === "nickname-taken"}
+                className="input"
+                defaultValue={user.nickname}
+                name="nickname"
+              />
+              {params.error === "nickname-taken" ? <small className="field-error" id="profile-nickname-error" role="alert">That nickname is already taken.</small> : null}
             </label>
             <label className="field">
               <span>Usual office</span>
@@ -76,6 +86,7 @@ export default async function ProfilePage() {
           </button>
         </form>
       </section>
+      <CreditsFooter />
     </AppShell>
   )
 }

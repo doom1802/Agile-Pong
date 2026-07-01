@@ -32,6 +32,8 @@ export const setMockSessionCookie = async (token: string) => {
 
 export const clearMockSessionCookie = async () => {
   const cookieStore = await cookies()
+  const token = cookieStore.get(MOCK_COOKIE_NAME)?.value
+  if (token) await db.revokeSession(token)
   cookieStore.delete(MOCK_COOKIE_NAME)
 }
 

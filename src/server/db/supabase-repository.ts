@@ -170,6 +170,29 @@ export const supabaseRepository: Repository = {
     if (!match) throw new Error("Created match not found")
     return match
   },
+  async submitMatchResult(matchId, _userId, sets) {
+    const supabase = await createClient()
+    const { error } = await supabase.rpc("submit_match_result_command", {
+      p_match_id: matchId,
+      p_sets: sets.map((set) => ({ sideAPoints: set.sideAPoints, sideBPoints: set.sideBPoints }))
+    })
+    if (error) throw new Error(error.message)
+  },
+  async confirmMatchResult(matchId) {
+    const supabase = await createClient()
+    const { error } = await supabase.rpc("confirm_match_result_command", { p_match_id: matchId })
+    if (error) throw new Error(error.message)
+  },
+  async cancelMatch(matchId) {
+    const supabase = await createClient()
+    const { error } = await supabase.rpc("cancel_match_command", { p_match_id: matchId })
+    if (error) throw new Error(error.message)
+  },
+  async disputeMatch(matchId) {
+    const supabase = await createClient()
+    const { error } = await supabase.rpc("dispute_match_command", { p_match_id: matchId })
+    if (error) throw new Error(error.message)
+  },
   async updateMatch() { return unsupportedWrite() },
   async replaceMatchSets() { return unsupportedWrite() },
   async updateMatchPlayers() { return unsupportedWrite() },

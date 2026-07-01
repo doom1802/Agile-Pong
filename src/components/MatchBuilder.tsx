@@ -9,16 +9,17 @@ type Props = {
   users: User[]
   ratings: PlayerRating[]
   currentUser: User
+  initialPlayerIds: string[]
   action: typeof createMatch
   error?: string
 }
 
-export function MatchBuilder({ users, ratings, currentUser, action, error }: Props) {
+export function MatchBuilder({ users, ratings, currentUser, initialPlayerIds = [], action, error }: Props) {
   const [type, setType] = useState<"singles" | "doubles">("singles")
   const [mode, setMode] = useState<"ranked" | "unranked">("ranked")
-  const [sideA2, setSideA2] = useState(users.find((user) => user.id !== currentUser.id)?.id ?? "")
-  const [sideB1, setSideB1] = useState(users.find((user) => user.id !== currentUser.id && user.id !== sideA2)?.id ?? "")
-  const [sideB2, setSideB2] = useState(users.find((user) => user.id !== currentUser.id && user.id !== sideA2 && user.id !== sideB1)?.id ?? "")
+  const [sideA2, setSideA2] = useState(initialPlayerIds[0] ?? "")
+  const [sideB1, setSideB1] = useState(initialPlayerIds[1] ?? initialPlayerIds[0] ?? "")
+  const [sideB2, setSideB2] = useState(initialPlayerIds[2] ?? "")
   const sideA1 = currentUser.id
 
   const preview = useMemo(() => {
@@ -85,9 +86,9 @@ export function MatchBuilder({ users, ratings, currentUser, action, error }: Pro
         <div className="grid two">
           <label className="field">
             <span>Points</span>
-            <select className="select" name="pointsToWin" defaultValue="11">
-              <option value="11">11</option>
+            <select className="select" name="pointsToWin" defaultValue="21">
               <option value="21">21</option>
+              <option value="11">11</option>
             </select>
           </label>
           <label className="field">
@@ -114,7 +115,14 @@ export function MatchBuilder({ users, ratings, currentUser, action, error }: Pro
             onChange={setSideA2}
           />
         ) : null}
-        <PlayerSearchSelect label="Opponent" name="sideB1" users={users} value={sideB1} excludedIds={[currentUser.id, sideA2, sideB2]} onChange={setSideB1} />
+        <PlayerSearchSelect
+          label="Opponent"
+          name="sideB1"
+          users={users}
+          value={sideB1}
+          excludedIds={type === "singles" ? [currentUser.id] : [currentUser.id, sideA2, sideB2]}
+          onChange={setSideB1}
+        />
         {type === "doubles" ? (
           <PlayerSearchSelect
             label="Opponent teammate"
@@ -183,16 +191,22 @@ function PlayerSearchSelect({
 }) {
   const [query, setQuery] = useState("")
   const selected = users.find((user) => user.id === value)
-  const filteredUsers = users
+  const matchingUsers = (search: string) => users
     .filter((user) => !excludedIds.includes(user.id) || user.id === value)
-    .filter((user) => searchableText(user).includes(query.trim().toLowerCase()))
-    .slice(0, 5)
+    .filter((user) => searchableText(user).includes(search.trim().toLowerCase()))
+  const filteredUsers = matchingUsers(query).slice(0, 3)
+
+  const updateQuery = (search: string) => {
+    setQuery(search)
+    const matches = matchingUsers(search)
+    if (search.trim() && matches.length === 1) onChange(matches[0].id)
+  }
 
   return (
     <div className="field">
       <span>{label}</span>
       <input name={name} type="hidden" value={value} />
-      <input className="input" placeholder="Search nickname, email, first or last name" value={query} onChange={(event) => setQuery(event.target.value)} />
+      <input className="input" placeholder="Search nickname, email, first or last name" value={query} onChange={(event) => updateQuery(event.target.value)} />
       <div className="player-search-results">
         {filteredUsers.map((user) => (
           <button className={user.id === value ? "player-option selected" : "player-option"} key={user.id} type="button" onClick={() => onChange(user.id)}>
