@@ -14,6 +14,8 @@ export function AvatarPicker({ defaultValue, fallback, fallbackStyle }: AvatarPi
   const [open, setOpen] = useState(false)
   const [cameraOn, setCameraOn] = useState(false)
   const [cameraError, setCameraError] = useState("")
+  const [imageError, setImageError] = useState("")
+  const [processing, setProcessing] = useState(false)
   const videoRef = useRef<HTMLVideoElement>(null)
   const streamRef = useRef<MediaStream | null>(null)
 
@@ -67,13 +69,33 @@ export function AvatarPicker({ defaultValue, fallback, fallbackStyle }: AvatarPi
   const onFileChange = (file: File | undefined) => {
     if (!file) return
 
-    const reader = new FileReader()
-    reader.onload = () => {
-      if (typeof reader.result === "string") {
-        setAvatar(reader.result)
-      }
+    setImageError("")
+    if (!["image/jpeg", "image/png", "image/webp"].includes(file.type) || file.size > 10 * 1024 * 1024) {
+      setImageError("Choose a JPG, PNG or WebP image smaller than 10 MB.")
+      return
     }
-    reader.readAsDataURL(file)
+
+    setProcessing(true)
+    const source = URL.createObjectURL(file)
+    const image = new Image()
+    image.onload = () => {
+      const canvas = document.createElement("canvas")
+      const size = Math.min(image.naturalWidth, image.naturalHeight)
+      const sx = (image.naturalWidth - size) / 2
+      const sy = (image.naturalHeight - size) / 2
+      canvas.width = 384
+      canvas.height = 384
+      canvas.getContext("2d")?.drawImage(image, sx, sy, size, size, 0, 0, 384, 384)
+      setAvatar(canvas.toDataURL("image/jpeg", 0.82))
+      URL.revokeObjectURL(source)
+      setProcessing(false)
+    }
+    image.onerror = () => {
+      URL.revokeObjectURL(source)
+      setImageError("That image could not be processed.")
+      setProcessing(false)
+    }
+    image.src = source
   }
 
   const takePhoto = () => {
@@ -84,12 +106,12 @@ export function AvatarPicker({ defaultValue, fallback, fallbackStyle }: AvatarPi
     const size = Math.min(video.videoWidth, video.videoHeight)
     const sx = (video.videoWidth - size) / 2
     const sy = (video.videoHeight - size) / 2
-    canvas.width = 480
-    canvas.height = 480
+    canvas.width = 384
+    canvas.height = 384
 
     const context = canvas.getContext("2d")
     context?.drawImage(video, sx, sy, size, size, 0, 0, canvas.width, canvas.height)
-    setAvatar(canvas.toDataURL("image/jpeg", 0.88))
+    setAvatar(canvas.toDataURL("image/jpeg", 0.82))
     close()
   }
 
@@ -129,7 +151,7 @@ export function AvatarPicker({ defaultValue, fallback, fallbackStyle }: AvatarPi
             <div className="grid two">
               <label className="button secondary full">
                 Upload image
-                <input accept="image/*" hidden type="file" onChange={(event) => onFileChange(event.target.files?.[0])} />
+                <input accept="image/jpeg,image/png,image/webp" hidden type="file" onChange={(event) => onFileChange(event.target.files?.[0])} />
               </label>
               <button className="button secondary full" type="button" onClick={() => setCameraOn((value) => !value)}>
                 {cameraOn ? "Stop camera" : "Use camera"}
@@ -137,6 +159,8 @@ export function AvatarPicker({ defaultValue, fallback, fallbackStyle }: AvatarPi
             </div>
 
             {cameraError ? <p className="pill gold">{cameraError}</p> : null}
+            {imageError ? <p className="pill gold">{imageError}</p> : null}
+            {processing ? <p className="pill">Compressing image...</p> : null}
 
             {cameraOn ? (
               <div className="camera-box">
@@ -151,7 +175,7 @@ export function AvatarPicker({ defaultValue, fallback, fallbackStyle }: AvatarPi
               <button className="button secondary" type="button" onClick={removeAvatar}>
                 Remove
               </button>
-              <button className="button" type="button" onClick={close}>
+              <button className="button" disabled={processing} type="button" onClick={close}>
                 Done
               </button>
             </div>

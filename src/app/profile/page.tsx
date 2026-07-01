@@ -19,6 +19,7 @@ export default async function ProfilePage({ searchParams }: { searchParams: Prom
           <h1>Your profile</h1>
           <p className="subtle">This is what colleagues see around matches and leaderboards.</p>
           {params.error === "invalid" ? <p className="pill gold">Check the profile fields and try again.</p> : null}
+          {params.error === "avatar" ? <p className="pill gold">The profile photo could not be uploaded. Try another image.</p> : null}
         </div>
       </div>
       <section className="panel">

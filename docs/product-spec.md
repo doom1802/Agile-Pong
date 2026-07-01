@@ -12,7 +12,7 @@ Agile Pong is an internal **Agile Lab** web app for tracking ping pong matches b
 - Allowed email domain: `@agilelab.it`.
 - Session: long-lived, roughly 30 days.
 - Profile: first name, last name, unique case-insensitive nickname, profile photo, usual office/location as free text.
-- Admins exist in the MVP and are marked by a database field.
+- Admin correction/deletion is planned but is not implemented in the current pilot.
 - Match types: singles and doubles.
 - Rankings: separate singles and doubles rankings.
 - Modes: ranked or unranked/friendly.
@@ -22,9 +22,8 @@ Agile Pong is an internal **Agile Lab** web app for tracking ping pong matches b
 - Ranked match length: best of 3 or best of 5.
 - Ranked matches: every set score is recorded.
 - Match results require in-app confirmation from the other side.
-- Regular users cannot edit or delete submitted matches.
-- Admins can edit or delete submitted matches.
-- Seasons last 2 months.
+- Regular users cannot edit or delete confirmed matches.
+- The initial `Open Season` has no automatic expiry.
 - Unranked matches: flexible scores and flexible number of sets.
 - Unranked matches: never change official rating.
 - Initial deployment idea: Vercel for the app, Supabase for DB/storage if it fits the free-tier constraints.
@@ -70,13 +69,11 @@ Login flow:
 6. If valid, app creates a long-lived session.
 7. First-time users complete their profile.
 
-Security defaults:
+Security defaults implemented by Supabase Auth and the application:
 
 - 6-digit code.
 - Code expires after 10 minutes.
-- Max 5 attempts.
 - Rate-limit code requests.
-- Store code and session token hashes, not raw values.
 - Use `httpOnly`, `secure`, `sameSite=lax` cookies.
 
 Display name priority:
@@ -87,7 +84,7 @@ Display name priority:
 
 Office/location is free text, but the UI can suggest already-used values to avoid too many variants.
 
-Admins are regular users with an admin flag in the database. In the MVP, admins can correct or delete submitted matches; regular users cannot.
+Admin correction/deletion remains future work. The current UI and RPC layer grant no administrative match mutation capability.
 
 ## Matches
 
@@ -302,19 +299,12 @@ Team A has a 75% win rate together.
 ## Base Data Model
 
 ```txt
-users
+profiles
 - id, email, first_name, last_name, nickname
 - avatar_url, office_location
-- is_admin
 - created_at, updated_at, last_login_at
 
-login_codes
-- id, email, code_hash
-- expires_at, consumed_at, attempts, created_at
-
-sessions
-- id, user_id, token_hash
-- expires_at, last_seen_at, created_at, revoked_at
+Supabase Auth owns users, OTP verification and sessions outside the public application schema.
 
 player_ratings
 - user_id
@@ -362,7 +352,7 @@ seasons
 - status: scheduled | active | completed
 ```
 
-Seasons last 2 months by default. Admin and moderation functionality exists in the MVP only where needed for match correction/deletion.
+The initial `Open Season` has no automatic end date. A future admin-controlled rollover will close it and create the next season without rewriting historical ratings. Admin and moderation functionality exists in the MVP only where needed for match correction/deletion.
 
 ## MVP
 
@@ -382,8 +372,8 @@ First useful version:
 - basic anti-farming
 - match history
 - player profile
-- admin flag with admin-only match edit/delete
-- 2-month seasons
+- future admin correction/deletion
+- open-ended initial season
 - pre-match preview with rating, probability, delta, form, and head-to-head
 - first badges
 
@@ -393,9 +383,9 @@ Suggested stack, unless something else is chosen:
 - TypeScript
 - Vercel for hosting
 - Supabase for Postgres and possibly storage
-- Prisma or Supabase client, depending on the final architecture
-- email provider for one-time codes, or Supabase auth if it can support the desired flow cleanly
-- object storage for avatars, likely Supabase Storage
+- Supabase client with transactional PostgreSQL RPC commands
+- Supabase Auth with custom SMTP for email OTPs
+- Supabase Storage for compressed avatars
 
 Rating logic must be separate from the UI and well tested.
 
@@ -415,8 +405,8 @@ The first version works when:
 - unranked matches never change rating
 - anti-farming reduces or zeroes rating impact when needed
 - leaderboard marks provisional players
-- only admins can edit/delete submitted matches
-- seasons run on a 2-month cadence
+- confirmed matches cannot be edited or deleted through the current pilot UI
+- the initial season remains active until a reviewed rollover
 - pre-match preview gives at least 3 useful insights
 - tests cover expected score, set multiplier, point multiplier, 11 vs 21, doubles, and anti-farming
 
@@ -425,7 +415,7 @@ The first version works when:
 - Should result confirmation be required from the direct opponent only, or can any teammate confirm in doubles?
 - What should happen if the other side disputes a submitted result?
 - Should admin edits recalculate all later ratings, or should admins mainly delete/void bad matches?
-- Should Vercel + Supabase be the final MVP stack after checking free-tier limits?
+- What audit and recalculation rules should future admin correction/deletion use?
 
 ## Avoid
 

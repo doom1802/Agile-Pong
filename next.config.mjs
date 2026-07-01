@@ -11,7 +11,7 @@ const nextConfig = {
       "object-src 'none'",
       `script-src 'self' 'unsafe-inline'${process.env.NODE_ENV === "development" ? " 'unsafe-eval'" : ""}`,
       "style-src 'self' 'unsafe-inline'",
-      "img-src 'self' blob: data:",
+      "img-src 'self' blob: data: https://*.supabase.co",
       "connect-src 'self' https://*.supabase.co wss://*.supabase.co",
       "font-src 'self' data:",
       ...(process.env.NODE_ENV === "production" ? ["upgrade-insecure-requests"] : [])

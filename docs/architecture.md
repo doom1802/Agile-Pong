@@ -1,37 +1,74 @@
-# Architecture
+# Agile Pong — Architecture
 
-## Decision
+Last reviewed: 2026-07-01
 
-Agile Pong is a modular Next.js monolith backed by Supabase Auth, PostgreSQL and
-Storage. UI and server-side application code remain in one deployment. A separate
-API service is deferred until there is a concrete second client, public API,
-independent scaling requirement or background-workload boundary.
+## Runtime architecture
+
+Agile Pong is a modular Next.js monolith deployed on Vercel. Supabase provides passwordless Auth, PostgreSQL, Row Level Security, transactional RPC commands, scheduled jobs and avatar Storage. A separate API service is intentionally deferred until a second client or independent scaling boundary exists.
+
+- Browser: renders the App Router UI and performs client-only avatar compression.
+- Next.js Server Actions: authenticate callers, validate form input and invoke Supabase.
+- Supabase Auth: sends and verifies email OTPs for `@agilelab.it` accounts.
+- PostgreSQL: stores profiles, seasons, ratings, matches, sets and audit events.
+- RPC commands: own every match state transition and Elo update transaction.
+- Supabase Storage: stores public-read profile avatars with owner-only writes.
+- GitHub Actions: validates pull requests and deploys pending migrations after merges to `main`.
+
+Production is `https://agile-pong.vercel.app`. Development uses local Supabase or explicitly enabled mock adapters; production hard-disables mock Auth and data regardless of environment mistakes.
 
 ## Trust boundaries
 
-- The browser is untrusted. A hidden button or a Server Action is not authorization.
-- Server Actions authenticate the caller and validate input before invoking the data layer.
-- PostgreSQL RLS is the final read/write authorization boundary.
-- Match state transitions and rating updates must run as one database transaction.
-- The Supabase publishable key may be exposed; a secret/service-role key must never
-  be shipped to the browser or used as the default request client.
+- The browser is untrusted. Hidden controls and Server Actions are not authorization boundaries.
+- Every mutating Server Action except OTP request/verification requires an authenticated user.
+- Inputs are checked in UI, Server Actions and PostgreSQL where the invariant affects data integrity.
+- RLS and grants are the final table-access boundary.
+- Authenticated clients can read company application data and update only their own allowed profile columns.
+- Match, set, event and rating tables reject direct authenticated writes.
+- Public SECURITY DEFINER wrappers expose only narrow match commands; private implementations are not executable by API roles.
+- The publishable Supabase key is safe in the browser. Secret/service-role keys are not used by the application.
 
-## Data access
+## Match state machine
 
-The current in-memory repository remains the local fallback while the Supabase
-repository is implemented. Supabase activation is explicit through
-`NEXT_PUBLIC_SUPABASE_URL` and `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`.
+```text
+create
+  │
+  ▼
+ready ───────────────► cancelled
+  │ submit result
+  ▼
+submitted ───────────► disputed
+  │ opposite side confirms
+  │ or scheduled confirmation after 24h
+  ▼
+confirmed
+```
 
-Authenticated users may read company player and match data. They may update only
-their own editable profile columns. Direct writes to match, score, event and rating
-tables are intentionally not granted. Those writes will be exposed through narrow,
-transactional database functions after their authorization tests are in place.
+`cancelled`, `disputed` and `confirmed` are terminal in the current application. Confirmation derives the winner from stored sets and applies Elo at most once in the same transaction. Unranked confirmation records history without changing ratings.
 
-## Delivery sequence
+## Authorization matrix
 
-1. Establish schema, constraints, grants and baseline RLS.
-2. Add local Supabase configuration and policy tests.
-3. Replace mock OTP/session handling with Supabase Auth SSR.
-4. Implement transactional match commands.
-5. Add the Supabase repository and switch reads.
-6. Remove the mock production path after data migration and end-to-end verification.
+| Operation | Creator/participant | Opposite side | Unrelated user | System job |
+| --- | --- | --- | --- | --- |
+| Read profiles, ratings and matches | Yes | Yes | Yes, when authenticated | Yes |
+| Edit own profile | Own profile only | Own profile only | Own profile only | No |
+| Create match | Yes; creator must be first participant | N/A | No | No |
+| Submit result | Any participant while `ready` | Any participant while `ready` | No | No |
+| Confirm result | No, if same side submitted | Yes, while `submitted` | No | After 24h |
+| Cancel match | Participant in an allowed state | Participant in an allowed state | No | No |
+| Dispute submitted result | Participant | Participant | No | No |
+| Write ratings/events directly | No | No | No | Private RPC only |
+| Upload/delete avatar | Own Storage folder only | Own folder only | Own folder only | No |
+
+Admin correction/deletion is not implemented yet and must not be inferred from the presence of private role data.
+
+## Rating and season consistency
+
+Singles and doubles ratings are separate per player and season. Confirmation locks the match and affected rating rows, applies anti-farming and daily caps, stores before/after/delta snapshots, and records an audit event. The initial `Open Season` uses PostgreSQL `infinity` as its end date and remains active until a future reviewed rollover migration closes it.
+
+## Delivery and operations
+
+Pull requests must pass dependency audit, lint, typecheck, unit tests, 70 pgTAP assertions, the concurrency test, 16 browser tests and a production build. Protected `main` requires the CI check. A separate production workflow serializes `supabase db push` after merges.
+
+For the internal pilot, Vercel runtime/function logs, Supabase Auth/Postgres logs and GitHub Action results are the observability stack. Sensitive values such as OTPs, tokens, credentials and full personal data must not be logged. Sentry is deferred until error volume or support needs justify another processor and SDK.
+
+The Supabase Free plan has no managed downloadable backup/PITR guarantee used by this project. That risk is accepted for the pilot. Before a destructive migration, create an encrypted logical dump and retain it outside Git; Storage objects require a separate copy. A formal restore drill becomes required before the data is considered business-critical.
