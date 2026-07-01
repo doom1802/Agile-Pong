@@ -11,16 +11,19 @@ import { db } from "./db"
 import type { MatchPlayer } from "./db/types"
 
 export const requestLoginCode = async (formData: FormData) => {
-  const email = validateEmail(String(formData.get("email") ?? ""))
+  const rawEmail = String(formData.get("email") ?? "")
+  const email = validateEmail(rawEmail)
   if (!email) {
+    console.warn("Rejected login code request: email outside allowed domain", { rawEmail })
     redirect("/login?error=domain")
   }
 
   if (isMockAuthEnabled) {
-    redirect(`/login?email=${encodeURIComponent(email)}&sent=1`)
+    redirect(`/login?email=${encodeURIComponent(email)}&sent=1&t=${Date.now()}`)
   }
 
   const supabase = await createClient()
+  const requestedAt = Date.now()
   const { error } = await supabase.auth.signInWithOtp({
     email,
     options: { shouldCreateUser: true }
@@ -29,23 +32,32 @@ export const requestLoginCode = async (formData: FormData) => {
   if (error) {
     const reason = error.status === 429 ? "rate-limit" : "send"
     console.error("Unable to send login OTP", {
+      email,
+      name: error.name,
       code: error.code,
       message: error.message,
-      status: error.status
+      status: error.status,
+      msElapsed: Date.now() - requestedAt
     })
     redirect(`/login?email=${encodeURIComponent(email)}&error=${reason}`)
   }
 
-  redirect(`/login?email=${encodeURIComponent(email)}&sent=1`)
+  // Requesting a new code invalidates any previously sent code, so the UI must
+  // always point users at the timestamp of the most recent send.
+  redirect(`/login?email=${encodeURIComponent(email)}&sent=1&t=${Date.now()}`)
 }
 
 export const verifyLoginCode = async (formData: FormData) => {
   const email = validateEmail(String(formData.get("email") ?? ""))
   const code = String(formData.get("code") ?? "")
+  const sentAt = String(formData.get("t") ?? "")
+  // Preserve the original send timestamp across failed attempts so the resend
+  // cooldown stays accurate and the error message keeps pointing at the latest code.
+  const sentParam = sentAt ? `&t=${sentAt}` : ""
 
   if (isMockAuthEnabled) {
     if (!email || !validateMockCode(code)) {
-      redirect(`/login?email=${encodeURIComponent(email ?? "")}&sent=1&error=code`)
+      redirect(`/login?email=${encodeURIComponent(email ?? "")}&sent=1&error=code${sentParam}`)
     }
 
     const existingUser = await db.getUserByEmail(email)
@@ -56,10 +68,18 @@ export const verifyLoginCode = async (formData: FormData) => {
   }
 
   if (!email || !/^\d{6,10}$/.test(code.trim())) {
-    redirect(`/login?email=${encodeURIComponent(email ?? "")}&sent=1&error=code`)
+    console.warn("Rejected login code before calling Supabase", {
+      email,
+      hasEmail: Boolean(email),
+      codeLength: code.trim().length,
+      sentAt: sentAt || null,
+      msSinceSent: sentAt ? Date.now() - Number(sentAt) : null
+    })
+    redirect(`/login?email=${encodeURIComponent(email ?? "")}&sent=1&error=code${sentParam}`)
   }
 
   const supabase = await createClient()
+  const verifyCalledAt = Date.now()
   const { data, error } = await supabase.auth.verifyOtp({
     email,
     token: code.trim(),
@@ -67,7 +87,19 @@ export const verifyLoginCode = async (formData: FormData) => {
   })
 
   if (error || !data.user) {
-    redirect(`/login?email=${encodeURIComponent(email)}&sent=1&error=code`)
+    console.error("Unable to verify login OTP", {
+      email,
+      name: error?.name,
+      code: error?.code,
+      message: error?.message,
+      status: error?.status,
+      hasUser: Boolean(data?.user),
+      codeLength: code.trim().length,
+      sentAt: sentAt || null,
+      msSinceSent: sentAt ? verifyCalledAt - Number(sentAt) : null,
+      msSinceVerifyCall: Date.now() - verifyCalledAt
+    })
+    redirect(`/login?email=${encodeURIComponent(email)}&sent=1&error=code${sentParam}`)
   }
 
   const { data: profile } = await supabase
@@ -145,17 +177,7 @@ export const saveProfile = async (formData: FormData) => {
     const { error: uploadError } = await supabase.storage
       .from("avatars")
       .upload(objectPath, image, { cacheControl: "3600", contentType: "image/jpeg", upsert: true })
-    if (uploadError) {
-      const { data: claims } = await supabase.auth.getClaims()
-      console.error("avatar upload failed", {
-        message: uploadError.message,
-        objectPath,
-        userId: user.id,
-        claimsSub: claims?.claims?.sub,
-        claimsRole: claims?.claims?.role
-      })
-      redirect(`${profilePath}?error=avatar`)
-    }
+    if (uploadError) redirect(`${profilePath}?error=avatar`)
 
     const { data } = supabase.storage.from("avatars").getPublicUrl(objectPath)
     avatarUrl = `${data.publicUrl}?v=${Date.now()}`

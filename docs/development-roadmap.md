@@ -42,7 +42,7 @@ Verified on 2026-07-01:
 - Docker CLI is available from `~/.local/bin/docker` and connects to Docker Desktop.
 - `npm audit --omit=dev` reports zero known vulnerabilities.
 - Local database lint reports no schema errors.
-- The hosted Supabase project is current through the latest merged migration; avatar Storage is pending this branch.
+- The hosted Supabase project is current through the latest merged migration, including the avatar Storage select policy fix.
 - Linked database lint reports no schema errors (one non-blocking unused-variable warning remains).
 - Production SMTP successfully delivers an OTP to a company account.
 - Production login, OTP verification, onboarding and profile edits pass on Vercel.
@@ -52,9 +52,7 @@ Verified on 2026-07-01:
 
 In progress:
 
-- Profile photos are being moved from inline data URLs to compressed Supabase Storage objects.
 - A real two-account production match confirmation remains to be smoke-tested with a colleague.
-- A real two-account match confirmation and production avatar verification remain open.
 
 The application must not be deployed as a finished product until all P0 items below are complete.
 
@@ -196,7 +194,6 @@ Profile nicknames are also unique case-insensitively at the database boundary, w
 - Implement admin correction/deletion with audit events.
 - Implement dispute and cancellation flows if retained in the domain model.
 - Add admin-controlled season rollover and archive views; the current `Open Season` remains active until then.
-- Complete and production-verify compressed avatar Storage with file validation and owner-only write policies.
 - Complete badges using confirmed real matches only.
 - Add empty/loading/error states across all data pages.
 - Reconsider dedicated error tracking when Vercel/Supabase logs are insufficient for support volume.
@@ -207,17 +204,15 @@ Profile nicknames are also unique case-insensitively at the database boundary, w
 Before wider company rollout:
 
 - Every P0 item is complete.
-- CI is green from a clean checkout.
-- Database migrations apply successfully from an empty schema.
-- The full match flow passes E2E testing.
-- RLS tests prove unrelated users cannot mutate matches.
+- CI is green from a clean checkout. **Verified on 2026-07-01** (lint, typecheck, unit tests, local Supabase migrations, RLS/concurrency tests, Playwright E2E and production build all passed from a clean checkout).
+- Database migrations apply successfully from an empty schema. **Verified on 2026-07-01.**
+- The full match flow passes E2E testing. **Verified on 2026-07-01.**
+- RLS tests prove unrelated users cannot mutate matches. **Verified on 2026-07-01.**
 - No mock backend can activate in production.
 - Supabase and Vercel production configuration has been verified.
 
 ## Next execution order
 
-1. Merge and production-verify compressed avatar Storage.
-2. Run a real two-account match smoke test: create, submit, opposite-side confirm and verify Elo/history.
-3. Perform the final release-gate run from a clean checkout.
-4. Before any destructive migration, create an encrypted logical backup; require a restore drill only when data criticality increases.
-5. Reassess dedicated observability when pilot usage produces enough failures to justify it.
+1. Run a real two-account match smoke test: create, submit, opposite-side confirm and verify Elo/history.
+2. Before any destructive migration, create an encrypted logical backup; require a restore drill only when data criticality increases.
+3. Reassess dedicated observability when pilot usage produces enough failures to justify it.

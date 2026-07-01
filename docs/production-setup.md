@@ -1,6 +1,6 @@
 # Agile Pong — Production setup
 
-Last reviewed: 2026-07-01
+Last reviewed: 2026-07-01 (avatar upload RLS fix)
 
 ## Security review status
 
@@ -21,13 +21,13 @@ Completed in code and local validation:
 - Vercel production login, onboarding and profile edits have been smoke-tested.
 - Automatic production database deployment completed successfully.
 - Security Advisor reports zero errors and six reviewed warnings.
+- Compressed avatar uploads backed by Supabase Storage are merged and production-tested; the `avatars` bucket required an explicit `select` RLS policy (missing SELECT policy broke the `upsert` conflict check, see `202607010004_avatars_select_policy.sql`).
 
 Remaining operational checks before wider rollout:
 
 - Network restrictions are intentionally deferred because GitHub-hosted migration runners use dynamic IPs; revisit if deployments move to a fixed egress runner.
 - Protect Supabase, GitHub and Vercel owner accounts with MFA.
 - CAPTCHA is deferred for the internal company-domain rollout and must be reconsidered before public exposure.
-- Merge and production-test compressed avatar uploads backed by Supabase Storage.
 - Free-plan backup risk is accepted for the internal pilot; take an encrypted logical dump before destructive migrations.
 
 ## GitHub Actions CI
