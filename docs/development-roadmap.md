@@ -162,7 +162,7 @@ Profile nicknames are also unique case-insensitively at the database boundary, w
 
 ### 10. Environment and deployment configuration
 
-**Status: In progress.** Production mock mode is hard-disabled, hosted migrations are current, SMTP delivery is verified and required checks are documented. Vercel configuration, shared-project data handling and backup procedures remain open.
+**Status: In progress.** Production mock mode is hard-disabled, hosted migrations are current, SMTP delivery is verified and required checks are documented. A protected GitHub workflow now applies pending Supabase migrations on every push to `main`; its production secrets and first successful run still need configuration. Vercel configuration, shared-project data handling and backup procedures remain open.
 
 - Keep mock backends disabled in production regardless of environment mistakes.
 - Document all required Vercel variables.
@@ -208,8 +208,8 @@ Deploy only when:
 
 ## Next execution order
 
-1. Merge and deploy the `rls_auto_enable` privilege remediation, then refresh Security Advisor.
-2. Complete the remaining Supabase dashboard checks: SSL/network settings, OTP limits and CAPTCHA decision.
+1. Configure the GitHub `production` environment secrets, merge the `rls_auto_enable` remediation and verify its automatic database deployment.
+2. Refresh Security Advisor, then complete SSL/network settings, OTP limits and the CAPTCHA decision.
 3. Refresh architecture/deployment documentation and verify Vercel production configuration.
 4. Decide shared-project data handling and complete a backup/restore drill.
 5. Perform the final release-gate run from a clean checkout.

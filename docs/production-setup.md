@@ -44,6 +44,20 @@ The workflow has passed on GitHub. The `main` ruleset requires pull requests and
 
 The validation workflow needs no production Supabase or Vercel secrets because it uses mock browser data and the local Docker database. Keep production migration deployment in a separate protected workflow using GitHub environment approvals.
 
+## Automated production migrations
+
+`.github/workflows/deploy-database.yml` runs after every push to `main` (and manually when requested). It links the production Supabase project and applies only pending migration files with `supabase db push`. GitHub concurrency prevents two production migration jobs from running at once.
+
+Create a GitHub environment named `production`, then add these encrypted environment secrets:
+
+```text
+SUPABASE_ACCESS_TOKEN=<personal access token from Supabase account settings>
+SUPABASE_DB_PASSWORD=<production project database password>
+SUPABASE_PROJECT_ID=cpzdfvhrgagfclcqbamo
+```
+
+Do not expose these values to pull-request workflows or Vercel. Keep migrations backward-compatible because Vercel and the database workflow may start concurrently after a merge. If strict ordering becomes necessary, disable Vercel's automatic production deploy and trigger a Vercel deploy hook only after the migration job succeeds.
+
 ## Vercel and Supabase
 
 1. Import the GitHub repository in Vercel and choose `main` as the production branch.
