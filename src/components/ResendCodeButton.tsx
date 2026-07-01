@@ -7,10 +7,15 @@ const COOLDOWN_SECONDS = 30
 const secondsLeft = (sentAt: number) => Math.max(0, COOLDOWN_SECONDS - Math.floor((Date.now() - sentAt) / 1000))
 
 export function ResendCodeButton({ sentAt }: { sentAt: number }) {
+  const [prevSentAt, setPrevSentAt] = useState(sentAt)
   const [remaining, setRemaining] = useState(() => secondsLeft(sentAt))
 
-  useEffect(() => {
+  if (sentAt !== prevSentAt) {
+    setPrevSentAt(sentAt)
     setRemaining(secondsLeft(sentAt))
+  }
+
+  useEffect(() => {
     const interval = setInterval(() => setRemaining(secondsLeft(sentAt)), 1000)
     return () => clearInterval(interval)
   }, [sentAt])
