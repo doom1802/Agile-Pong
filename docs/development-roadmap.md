@@ -54,7 +54,7 @@ In progress:
 
 - Profile photos are being moved from inline data URLs to compressed Supabase Storage objects.
 - A real two-account production match confirmation remains to be smoke-tested with a colleague.
-- Backup/restore validation, observability and final documentation cleanup remain open.
+- A real two-account match confirmation and production avatar verification remain open.
 
 The application must not be deployed as a finished product until all P0 items below are complete.
 
@@ -170,7 +170,7 @@ Profile nicknames are also unique case-insensitively at the database boundary, w
 
 ### 10. Environment and deployment configuration
 
-**Status: In progress.** Production mock mode is hard-disabled, Vercel is live, Auth/SMTP configuration is verified, and the protected GitHub workflow has successfully applied a production migration. Shared-project data handling and a backup/restore drill remain open.
+**Status: Complete for the internal pilot.** Production mock mode is hard-disabled, Vercel is live, Auth/SMTP configuration is verified, and the protected GitHub workflow successfully deploys migrations. Development uses local Supabase rather than production data. Free-plan backup limitations are explicitly accepted; encrypted dumps are required before destructive migrations.
 
 - Keep mock backends disabled in production regardless of environment mistakes.
 - Document all required Vercel variables.
@@ -181,7 +181,7 @@ Profile nicknames are also unique case-insensitively at the database boundary, w
 
 ### 11. Documentation cleanup
 
-**Status: In progress.** README reflects the Supabase-backed architecture and quality commands. Architecture details, state/authorization documentation and complete deployment instructions still need review.
+**Status: Complete.** README, zero-credential local setup, architecture, state machine, authorization matrix, production operations, deployment flow and current product decisions reflect the live system.
 
 - Update README sections that still describe the mock repository as the default.
 - Remove mock-specific copy from insights and UI.
@@ -199,7 +199,7 @@ Profile nicknames are also unique case-insensitively at the database boundary, w
 - Complete and production-verify compressed avatar Storage with file validation and owner-only write policies.
 - Complete badges using confirmed real matches only.
 - Add empty/loading/error states across all data pages.
-- Add observability for failed Auth, RPC and database operations without logging sensitive data.
+- Reconsider dedicated error tracking when Vercel/Supabase logs are insufficient for support volume.
 - Review accessibility, keyboard navigation and mobile usability.
 
 ## Final release gate
@@ -218,6 +218,6 @@ Before wider company rollout:
 
 1. Merge and production-verify compressed avatar Storage.
 2. Run a real two-account match smoke test: create, submit, opposite-side confirm and verify Elo/history.
-3. Decide shared-project data handling and complete a backup/restore drill.
-4. Add production observability for Auth, RPC and database failures without sensitive data.
-5. Refresh architecture/state-machine documentation and perform the final release-gate run from a clean checkout.
+3. Perform the final release-gate run from a clean checkout.
+4. Before any destructive migration, create an encrypted logical backup; require a restore drill only when data criticality increases.
+5. Reassess dedicated observability when pilot usage produces enough failures to justify it.

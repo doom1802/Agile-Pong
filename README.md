@@ -1,54 +1,61 @@
 # Agile Pong
 
-Small MVP for Agile Lab's internal ping pong ranking app.
+Internal Agile Lab ping-pong ranking app, live at [agile-pong.vercel.app](https://agile-pong.vercel.app).
 
-## What is included
+## Product
 
-- Next.js App Router frontend and backend actions.
-- Passwordless Supabase Auth restricted to `@agilelab.it` email addresses.
-- SSR cookie sessions refreshed by the Next.js proxy.
-- Profile onboarding with nickname, name, avatar URL, and office.
-- Singles and doubles leaderboards.
+- Passwordless Supabase Auth restricted to `@agilelab.it`.
+- Profile onboarding, unique nicknames and compressed Storage-backed avatars.
+- Singles and doubles leaderboards with separate Elo ratings.
 - Ranked and unranked match creation.
-- Match flow: ready -> submitted -> confirmed.
-- Transactional Elo, anti-farming, daily caps, and singles/doubles ratings in PostgreSQL.
-- Optional mock Auth/data adapters for isolated UI development and browser tests.
+- Result flow: `ready → submitted → confirmed`, plus cancellation and dispute.
+- Opposite-side confirmation, 24-hour scheduled confirmation, anti-farming and daily caps.
+- Open-ended initial season until an admin-controlled rollover is implemented.
 
-## Run locally
+## Architecture
+
+The application is a Next.js App Router monolith on Vercel backed by Supabase Auth, PostgreSQL and Storage. Browser and Server Action input is untrusted; RLS, grants and transactional RPC commands enforce data access and match transitions. Production never enables mock backends.
+
+See [local development](docs/local-development.md), [architecture](docs/architecture.md), [product specification](docs/product-spec.md), [roadmap](docs/development-roadmap.md) and [production setup](docs/production-setup.md).
+
+## Local development
+
+For a zero-credential mock environment:
 
 ```bash
-npm install
+cp .env.mock.example .env.local
+npm ci
 npm run dev
 ```
 
-Then open `http://localhost:3001`.
+Open `http://localhost:3001`, use any `@agilelab.it` email and enter code `123456`. See the local-development guide for Docker-based database testing, also requiring no hosted Supabase credentials.
 
-## Authentication
-
-Configure Supabase using `.env.example`, then sign in with an `@agilelab.it`
-address and the one-time code delivered by email.
-
-## Quality checks
+## Quality gate
 
 ```bash
+npm audit --omit=dev
 npm run lint
 npm run typecheck
 npm run test
+npm run test:db      # Docker Desktop and local Supabase required
 npm run test:e2e
-npm run test:db # requires Docker Desktop and `supabase start`
 npm run build
 ```
 
-Playwright always starts the app with mock Auth and mock data. Database/RLS tests run against an isolated local Supabase stack and never write to the linked remote project.
+Playwright uses isolated mock Auth/data. Database and concurrency tests use local PostgreSQL and never mutate the linked project.
 
-## Production security gate
+## Delivery
 
-Before deployment:
+Work on a branch and open a pull request to `main`. The required CI check validates application and database behavior. After merge:
 
-- Keep `AUTH_BACKEND` and `DATA_BACKEND` set to `supabase`; mock mode is also hard-disabled when `NODE_ENV=production`.
-- In Supabase Auth rate-limit settings, verify the OTP/email-send limits and SMTP quota are appropriate for the company user count.
-- Run `npm audit --omit=dev`, `npm run db:lint`, and Supabase Security Advisor; resolve or explicitly document every applicable finding.
-- Verify Site URL, allowed redirect URLs, cookie/logout behavior, and that no service-role key is present in browser or Vercel public variables.
-- Apply migrations from an empty local database and run `npm run test:db` before pushing them to the linked project.
+1. Vercel deploys the Next.js application.
+2. The protected database workflow serially applies pending Supabase migrations.
 
-The app uses only the Supabase publishable key during normal requests. Match and rating tables are read-only to authenticated clients; state changes go through transactional RPC commands.
+Migrations must remain backward-compatible because those deployments may overlap. Never commit environment files, database dumps, service-role keys or Supabase access tokens.
+
+## Pilot operations
+
+- Observability: Vercel logs, Supabase logs and GitHub Action results; Sentry is intentionally deferred.
+- Backups: Free-plan risk accepted for the pilot; take an encrypted logical dump before destructive migrations.
+- CAPTCHA: deferred while access is company-domain-only; reconsider before public exposure.
+- Network restrictions: deferred because GitHub-hosted migration runners use dynamic IPs.

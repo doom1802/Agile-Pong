@@ -28,7 +28,7 @@ Remaining operational checks before wider rollout:
 - Protect Supabase, GitHub and Vercel owner accounts with MFA.
 - CAPTCHA is deferred for the internal company-domain rollout and must be reconsidered before public exposure.
 - Merge and production-test compressed avatar uploads backed by Supabase Storage.
-- Complete a backup/restore drill.
+- Free-plan backup risk is accepted for the internal pilot; take an encrypted logical dump before destructive migrations.
 
 ## GitHub Actions CI
 
@@ -107,15 +107,22 @@ Production SMTP delivery is verified with one real `@agilelab.it` account. Befor
 
 ## Backup and restore
 
-- On paid Supabase plans, verify daily backup retention in **Database > Backups**; enable PITR only if the required recovery point justifies it.
-- On Free—or before every destructive migration—create an encrypted off-site logical backup using the Session Pooler connection string:
+The internal pilot currently accepts the Supabase Free-plan limitation: there is no project requirement for managed downloadable backups or PITR, and a restore drill is deferred until the data becomes business-critical. Before every destructive migration, create an encrypted off-site logical backup using the Session Pooler connection string:
 
   ```bash
-  npm exec supabase db dump -- --db-url "$SUPABASE_DB_URL" -f roles.sql --role-only
-  npm exec supabase db dump -- --db-url "$SUPABASE_DB_URL" -f schema.sql
-  npm exec supabase db dump -- --db-url "$SUPABASE_DB_URL" -f data.sql --use-copy --data-only
+  npm exec -- supabase db dump --db-url "$SUPABASE_DB_URL" -f roles.sql --role-only
+  npm exec -- supabase db dump --db-url "$SUPABASE_DB_URL" -f schema.sql
+  npm exec -- supabase db dump --db-url "$SUPABASE_DB_URL" -f data.sql --use-copy --data-only
   ```
 
 - Never commit dumps or database passwords. Store encrypted backups outside the repository with dated retention.
-- Perform a restore drill into a disposable Supabase project before considering the backup procedure complete.
+- A restore drill into a disposable project becomes mandatory before upgrading the data’s criticality or inviting a broad company rollout.
 - Supabase database backups do not restore deleted Storage objects; back up Storage separately once avatars move there.
+
+## Observability
+
+For the internal pilot, use Vercel runtime/function logs, Supabase Auth/Postgres logs and GitHub Action results. These cover application exceptions, failed Auth/RPC calls and deployment failures without adding another SDK or data processor. Sentry is intentionally deferred.
+
+- Never log OTPs, access/refresh tokens, credentials or full request payloads.
+- Use the timestamp, route, deployment and safe error code to correlate failures across Vercel and Supabase.
+- Treat repeated login, RPC, Storage or migration failures as the threshold for adding alerting or a dedicated error tracker.
