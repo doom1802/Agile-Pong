@@ -362,7 +362,7 @@ seasons
 - status: scheduled | active | completed
 ```
 
-Seasons last 2 months by default. Admin and moderation functionality exists in the MVP only where needed for match correction/deletion.
+The initial `Open Season` has no automatic end date. A future admin-controlled rollover will close it and create the next season without rewriting historical ratings. Admin and moderation functionality exists in the MVP only where needed for match correction/deletion.
 
 ## MVP
 

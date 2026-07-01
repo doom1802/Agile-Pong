@@ -1,5 +1,5 @@
 begin;
-select plan(21);
+select plan(22);
 
 select has_table('public', 'profiles', 'profiles exists');
 select has_table('public', 'matches', 'matches exists');
@@ -46,6 +46,7 @@ select ok(
 select ok(exists (select 1 from pg_policies where schemaname = 'storage' and tablename = 'objects' and policyname = 'avatars_insert_own'), 'avatar insert policy exists');
 select ok(exists (select 1 from pg_policies where schemaname = 'storage' and tablename = 'objects' and policyname = 'avatars_update_own'), 'avatar update policy exists');
 select ok(exists (select 1 from pg_policies where schemaname = 'storage' and tablename = 'objects' and policyname = 'avatars_delete_own'), 'avatar delete policy exists');
+select ok(exists (select 1 from public.seasons where name = 'Open Season' and ends_at = 'infinity'::timestamptz), 'the active season is open-ended');
 
 select * from finish();
 rollback;

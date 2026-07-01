@@ -28,6 +28,7 @@ Completed:
 - Vitest, Playwright and pgTAP test infrastructure.
 - GitHub CI, protected `main` pull-request flow and automatic production database migrations.
 - Vercel production deployment at `https://agile-pong.vercel.app`.
+- Open-ended initial season with no automatic expiry.
 
 Verified on 2026-07-01:
 
@@ -35,7 +36,7 @@ Verified on 2026-07-01:
 - TypeScript typecheck passes.
 - Production build passes.
 - Vitest passes: 6 tests.
-- Supabase pgTAP passes: 69 tests across 3 files.
+- Supabase pgTAP passes: 70 tests across 3 files.
 - Multi-session confirmation test observes the PostgreSQL row-lock wait and proves Elo is applied once.
 - Playwright passes: 16 tests across desktop Chromium and mobile WebKit.
 - Docker CLI is available from `~/.local/bin/docker` and connects to Docker Desktop.
@@ -122,7 +123,7 @@ Profile nicknames are also unique case-insensitively at the database boundary, w
 
 ### 6. Database and RLS tests
 
-**Status: Complete.** The local suite has 69 passing pgTAP assertions covering protected writes, anonymous access, nickname uniqueness, initialization, participant roles, avatar Storage policy, repeated requests and transactional rating outcomes, plus a passing two-session lock/concurrency test.
+**Status: Complete.** The local suite has 70 passing pgTAP assertions covering protected writes, anonymous access, nickname uniqueness, initialization, participant roles, avatar Storage policy, open-season configuration, repeated requests and transactional rating outcomes, plus a passing two-session lock/concurrency test.
 
 - Add pgTAP tests for profile access and protected columns.
 - Verify anonymous users cannot read company data.
@@ -194,7 +195,7 @@ Profile nicknames are also unique case-insensitively at the database boundary, w
 
 - Implement admin correction/deletion with audit events.
 - Implement dispute and cancellation flows if retained in the domain model.
-- Add season rollover automation and archive views.
+- Add admin-controlled season rollover and archive views; the current `Open Season` remains active until then.
 - Complete and production-verify compressed avatar Storage with file validation and owner-only write policies.
 - Complete badges using confirmed real matches only.
 - Add empty/loading/error states across all data pages.
