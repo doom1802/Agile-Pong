@@ -145,7 +145,17 @@ export const saveProfile = async (formData: FormData) => {
     const { error: uploadError } = await supabase.storage
       .from("avatars")
       .upload(objectPath, image, { cacheControl: "3600", contentType: "image/jpeg", upsert: true })
-    if (uploadError) redirect(`${profilePath}?error=avatar`)
+    if (uploadError) {
+      const { data: claims } = await supabase.auth.getClaims()
+      console.error("avatar upload failed", {
+        message: uploadError.message,
+        objectPath,
+        userId: user.id,
+        claimsSub: claims?.claims?.sub,
+        claimsRole: claims?.claims?.role
+      })
+      redirect(`${profilePath}?error=avatar`)
+    }
 
     const { data } = supabase.storage.from("avatars").getPublicUrl(objectPath)
     avatarUrl = `${data.publicUrl}?v=${Date.now()}`
