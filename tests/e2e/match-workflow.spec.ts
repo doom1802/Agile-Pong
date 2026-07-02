@@ -44,7 +44,7 @@ test("creates, submits, and confirms a ranked singles match from the opposite si
   await opponent.context.close()
 })
 
-test("supports participant cancellation and dispute without applying rating", async ({ browser, page }) => {
+test("supports participant cancellation of ready and submitted matches without applying rating", async ({ browser, page }) => {
   await login(page, "domenico@agilelab.it")
   await page.goto("/matches/new")
   await page.getByLabel("Points").selectOption("11")
@@ -62,13 +62,14 @@ test("supports participant cancellation and dispute without applying rating", as
   await page.getByRole("button", { name: /luca@agilelab.it/i }).click()
   await page.getByRole("button", { name: "Create match" }).click()
   await page.getByRole("button", { name: "Close" }).click()
-  const disputable = page.locator("article").first()
-  await fillStraightSets(disputable)
-  await disputable.getByRole("button", { name: "Confirm sets" }).click()
+  const submitted = page.locator("article").first()
+  await fillStraightSets(submitted)
+  await submitted.getByRole("button", { name: "Confirm sets" }).click()
   const opponent = await opponentPage(browser)
   await opponent.page.goto("/matches")
-  await opponent.page.locator("article", { has: opponent.page.getByRole("button", { name: "Dispute result" }) }).first().getByRole("button", { name: "Dispute result" }).click()
-  await expect(opponent.page.locator("article").first()).toContainText("Result disputed")
+  const submittedForOpponent = opponent.page.locator("article", { has: opponent.page.getByRole("button", { name: "Cancel match" }) }).first()
+  await submittedForOpponent.getByRole("button", { name: "Cancel match" }).click()
+  await expect(opponent.page.locator("article").first()).toContainText("cancelled")
   await opponent.context.close()
 })
 

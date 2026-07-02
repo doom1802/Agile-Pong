@@ -3,6 +3,7 @@ import { redirect } from "next/navigation"
 import { saveProfile } from "@/server/actions"
 import { requireUser } from "@/server/auth"
 import { avatarTheme, initials } from "@/lib/format"
+import { FormSubmitButton } from "@/components/FormSubmitButton"
 
 export default async function OnboardingPage({ searchParams }: { searchParams: Promise<{ error?: string }> }) {
   const user = await requireUser()
@@ -52,9 +53,7 @@ function ProfileForm({ error, user }: { error?: string; user: Awaited<ReturnType
         <span>Usual office</span>
         <input className="input" defaultValue={user.officeLocation} name="officeLocation" placeholder="Torino, Milano, Remote..." />
       </label>
-      <button className="button full" type="submit">
-        Save profile
-      </button>
+      <FormSubmitButton className="button full" pendingLabel="Saving profile...">Save profile</FormSubmitButton>
     </form>
   )
 }

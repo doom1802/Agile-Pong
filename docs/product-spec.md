@@ -12,7 +12,7 @@ Agile Pong is an internal **Agile Lab** web app for tracking ping pong matches b
 - Allowed email domain: `@agilelab.it`.
 - Session: long-lived, roughly 30 days.
 - Profile: first name, last name, unique case-insensitive nickname, profile photo, usual office/location as free text.
-- Admin correction/deletion is planned but is not implemented in the current pilot.
+- General admin correction/deletion is planned but is not implemented in the current pilot.
 - Match types: singles and doubles.
 - Rankings: separate singles and doubles rankings.
 - Modes: ranked or unranked/friendly.
@@ -22,7 +22,8 @@ Agile Pong is an internal **Agile Lab** web app for tracking ping pong matches b
 - Ranked match length: best of 3 or best of 5.
 - Ranked matches: every set score is recorded.
 - Match results require in-app confirmation from the other side.
-- Regular users cannot edit or delete confirmed matches.
+- Either participant can edit a confirmed result for one hour when it is still the latest match for every participant.
+- Participants can cancel ready or submitted matches; cancelled matches never apply Elo.
 - The initial `Open Season` has no automatic expiry.
 - Unranked matches: flexible scores and flexible number of sets.
 - Unranked matches: never change official rating.
@@ -84,7 +85,7 @@ Display name priority:
 
 Office/location is free text, but the UI can suggest already-used values to avoid too many variants.
 
-Admin correction/deletion remains future work. The current UI and RPC layer grant no administrative match mutation capability.
+General admin correction/deletion remains future work. Participant correction is intentionally narrow: the result must be within one hour of its first confirmation and must remain the latest submitted or confirmed match for every involved player. Saving replaces the sets and atomically reverses and reapplies any ranked Elo change.
 
 ## Matches
 
@@ -405,7 +406,10 @@ The first version works when:
 - unranked matches never change rating
 - anti-farming reduces or zeroes rating impact when needed
 - leaderboard marks provisional players
-- confirmed matches cannot be edited or deleted through the current pilot UI
+- the latest confirmed match can be corrected by either participant for one hour without leaving Elo partially reverted
+- submitted matches can be cancelled by either participant before rating is applied
+- score forms identify the current leader or winner and show validation errors inline
+- forms and route transitions expose loading states and prevent duplicate submissions
 - the initial season remains active until a reviewed rollover
 - pre-match preview gives at least 3 useful insights
 - tests cover expected score, set multiplier, point multiplier, 11 vs 21, doubles, and anti-farming
@@ -413,7 +417,6 @@ The first version works when:
 ## Open Questions
 
 - Should result confirmation be required from the direct opponent only, or can any teammate confirm in doubles?
-- What should happen if the other side disputes a submitted result?
 - Should admin edits recalculate all later ratings, or should admins mainly delete/void bad matches?
 - What audit and recalculation rules should future admin correction/deletion use?
 

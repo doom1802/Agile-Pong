@@ -3,7 +3,7 @@
 import Link from "next/link"
 import { usePathname } from "next/navigation"
 import type { User } from "@/server/db/types"
-import { displayName } from "@/lib/format"
+import { avatarTheme, displayName, initials } from "@/lib/format"
 
 export function AppShell({ user, children }: { user: User; children: React.ReactNode }) {
   const pathname = usePathname()
@@ -24,7 +24,10 @@ export function AppShell({ user, children }: { user: User; children: React.React
             <NavLink active={pathname.startsWith("/players")} href="/players">Players</NavLink>
           </nav>
           <div className="topbar-actions">
-            <Link aria-current={pathname.startsWith("/profile") ? "page" : undefined} className={`profile-chip${pathname.startsWith("/profile") ? " active" : ""}`} href="/profile">{displayName(user)}</Link>
+            <Link aria-current={pathname.startsWith("/profile") ? "page" : undefined} className={`profile-chip${pathname.startsWith("/profile") ? " active" : ""}`} href="/profile">
+              <span className="profile-chip-avatar" style={avatarTheme(user)}>{user.avatarUrl ? <span aria-hidden className="avatar-image" style={{ backgroundImage: `url(${user.avatarUrl})` }} /> : initials(user)}</span>
+              <span>{displayName(user)}</span>
+            </Link>
           </div>
         </div>
       </header>

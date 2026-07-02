@@ -1,6 +1,6 @@
 # Agile Pong — Development Roadmap
 
-Last updated: 2026-07-01
+Last updated: 2026-07-02
 
 Status legend:
 
@@ -50,9 +50,9 @@ Verified on 2026-07-01:
 - Security Advisor reports zero errors and only six reviewed warnings.
 - The production migration workflow completed its first successful deployment.
 
-In progress:
+Verified on 2026-07-02:
 
-- A real two-account production match confirmation remains to be smoke-tested with a colleague.
+- A real two-account production match passed the full smoke test: match creation, result submission, opposite-side confirmation, Elo update and match-history update.
 
 The application must not be deployed as a finished product until all P0 items below are complete.
 
@@ -189,13 +189,13 @@ Profile nicknames are also unique case-insensitively at the database boundary, w
 
 ## P2 — Product completion and polish
 
-**Status: Partially started.** Automatic confirmation, cancellation and dispute foundations already exist; the remaining product and operational work below is not release-complete.
+**Status: Partially started.** Automatic confirmation, participant cancellation and one-hour latest-result correction are implemented; the remaining product and operational work below is not release-complete.
 
 - Implement admin correction/deletion with audit events.
-- Implement dispute and cancellation flows if retained in the domain model.
+- Decide whether the retained dispute RPC should be removed now that submitted matches use cancellation in the UI.
 - Add admin-controlled season rollover and archive views; the current `Open Season` remains active until then.
 - Complete badges using confirmed real matches only.
-- Add empty/loading/error states across all data pages.
+- Continue refining empty states; forms, route transitions and match score validation now have loading and actionable error feedback.
 - Reconsider dedicated error tracking when Vercel/Supabase logs are insufficient for support volume.
 - Review accessibility, keyboard navigation and mobile usability.
 
@@ -213,6 +213,5 @@ Before wider company rollout:
 
 ## Next execution order
 
-1. Run a real two-account match smoke test: create, submit, opposite-side confirm and verify Elo/history.
-2. Before any destructive migration, create an encrypted logical backup; require a restore drill only when data criticality increases.
-3. Reassess dedicated observability when pilot usage produces enough failures to justify it.
+1. Before any destructive migration, create an encrypted logical backup; require a restore drill only when data criticality increases.
+2. Reassess dedicated observability when pilot usage produces enough failures to justify it.

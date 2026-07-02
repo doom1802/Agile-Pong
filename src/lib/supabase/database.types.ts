@@ -357,6 +357,10 @@ export type Database = {
         Args: { p_match_id: string }
         Returns: undefined
       }
+      edit_last_match_result_command: {
+        Args: { p_match_id: string; p_sets: Json }
+        Returns: undefined
+      }
       submit_match_result_command: {
         Args: { p_match_id: string; p_sets: Json }
         Returns: undefined

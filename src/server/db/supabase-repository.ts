@@ -183,6 +183,14 @@ export const supabaseRepository: Repository = {
     const { error } = await supabase.rpc("confirm_match_result_command", { p_match_id: matchId })
     if (error) throw new Error(error.message)
   },
+  async editLastMatchResult(matchId, _userId, sets) {
+    const supabase = await createClient()
+    const { error } = await supabase.rpc("edit_last_match_result_command", {
+      p_match_id: matchId,
+      p_sets: sets.map((set) => ({ sideAPoints: set.sideAPoints, sideBPoints: set.sideBPoints }))
+    })
+    if (error) throw new Error(error.message)
+  },
   async cancelMatch(matchId) {
     const supabase = await createClient()
     const { error } = await supabase.rpc("cancel_match_command", { p_match_id: matchId })
