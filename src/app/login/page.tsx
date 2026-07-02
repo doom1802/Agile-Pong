@@ -1,10 +1,12 @@
 import { requestLoginCode, verifyLoginCode } from "@/server/actions"
 import { isMockAuthEnabled } from "@/server/auth"
+import { FormSubmitButton } from "@/components/FormSubmitButton"
 
-export default async function LoginPage({ searchParams }: { searchParams: Promise<{ email?: string; sent?: string; error?: string }> }) {
+export default async function LoginPage({ searchParams }: { searchParams: Promise<{ email?: string; sent?: string; error?: string; t?: string }> }) {
   const params = await searchParams
   const email = params.email ?? ""
   const codeSent = Boolean(params.sent && email)
+  const sentAt = /^\d{13}$/.test(params.t ?? "") ? params.t : undefined
 
   return (
     <main className="auth-page">
@@ -28,22 +30,23 @@ export default async function LoginPage({ searchParams }: { searchParams: Promis
               <span>Company email</span>
               <input className="input" defaultValue={email} name="email" placeholder="name@agilelab.it" type="email" />
             </label>
-            <button className="button full" type="submit">
+            <FormSubmitButton className="button full" pendingLabel="Sending...">
               Send code
-            </button>
+            </FormSubmitButton>
           </form>
         ) : null}
 
         {codeSent ? (
           <form action={verifyLoginCode} className="form" style={{ marginTop: 18 }}>
             <input name="email" type="hidden" value={email} />
+            {sentAt ? <input name="t" type="hidden" value={sentAt} /> : null}
             <label className="field">
               <span>One-time code</span>
               <input autoComplete="one-time-code" className="input" defaultValue={isMockAuthEnabled ? "123456" : ""} inputMode="numeric" maxLength={10} minLength={6} name="code" pattern="[0-9]{6,10}" placeholder="12345678" required />
             </label>
-            <button className="button success full" type="submit">
+            <FormSubmitButton className="button success full" pendingLabel="Checking...">
               Enter
-            </button>
+            </FormSubmitButton>
             <a className="button secondary full" href="/login">
               Use another email
             </a>

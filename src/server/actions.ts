@@ -42,18 +42,25 @@ export const requestLoginCode = async (formData: FormData) => {
     redirect(`/login?email=${encodeURIComponent(email)}&error=${reason}`)
   }
 
+  const sentAt = Date.now()
+  console.info("Login OTP requested", {
+    email,
+    sentAt,
+    msElapsed: sentAt - requestedAt
+  })
   // Requesting a new code invalidates any previously sent code, so the UI must
   // always point users at the timestamp of the most recent send.
-  redirect(`/login?email=${encodeURIComponent(email)}&sent=1&t=${Date.now()}`)
+  redirect(`/login?email=${encodeURIComponent(email)}&sent=1&t=${sentAt}`)
 }
 
 export const verifyLoginCode = async (formData: FormData) => {
   const email = validateEmail(String(formData.get("email") ?? ""))
   const code = String(formData.get("code") ?? "")
   const sentAt = String(formData.get("t") ?? "")
+  const sentAtMs = /^\d{13}$/.test(sentAt) ? Number(sentAt) : null
   // Preserve the original send timestamp across failed attempts so the resend
   // cooldown stays accurate and the error message keeps pointing at the latest code.
-  const sentParam = sentAt ? `&t=${sentAt}` : ""
+  const sentParam = sentAtMs ? `&t=${sentAtMs}` : ""
 
   if (isMockAuthEnabled) {
     if (!email || !validateMockCode(code)) {
@@ -72,8 +79,8 @@ export const verifyLoginCode = async (formData: FormData) => {
       email,
       hasEmail: Boolean(email),
       codeLength: code.trim().length,
-      sentAt: sentAt || null,
-      msSinceSent: sentAt ? Date.now() - Number(sentAt) : null
+      sentAt: sentAtMs,
+      msSinceSent: sentAtMs ? Date.now() - sentAtMs : null
     })
     redirect(`/login?email=${encodeURIComponent(email ?? "")}&sent=1&error=code${sentParam}`)
   }
@@ -95,12 +102,19 @@ export const verifyLoginCode = async (formData: FormData) => {
       status: error?.status,
       hasUser: Boolean(data?.user),
       codeLength: code.trim().length,
-      sentAt: sentAt || null,
-      msSinceSent: sentAt ? verifyCalledAt - Number(sentAt) : null,
+      sentAt: sentAtMs,
+      msSinceSent: sentAtMs ? verifyCalledAt - sentAtMs : null,
       msSinceVerifyCall: Date.now() - verifyCalledAt
     })
     redirect(`/login?email=${encodeURIComponent(email)}&sent=1&error=code${sentParam}`)
   }
+
+  console.info("Verified login OTP", {
+    email,
+    sentAt: sentAtMs,
+    msSinceSent: sentAtMs ? verifyCalledAt - sentAtMs : null,
+    msSinceVerifyCall: Date.now() - verifyCalledAt
+  })
 
   const { data: profile } = await supabase
     .from("profiles")
