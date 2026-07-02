@@ -4,6 +4,10 @@ const login = async (page: import("@playwright/test").Page, email = "domenico@ag
   await page.goto("/login")
   await page.getByLabel("Company email").fill(email)
   await page.getByRole("button", { name: "Send code" }).click()
+  await expect(page).toHaveURL(/t=\d{13}/)
+  const sentAt = new URL(page.url()).searchParams.get("t")
+  expect(sentAt).toMatch(/^\d{13}$/)
+  await expect(page.locator('input[name="t"]')).toHaveValue(sentAt ?? "")
   await page.getByRole("button", { name: "Enter" }).click()
   await expect(page).not.toHaveURL(/\/login/)
 }
