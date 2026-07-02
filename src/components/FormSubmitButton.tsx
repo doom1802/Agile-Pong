@@ -9,13 +9,13 @@ export function FormSubmitButton({
   pendingLabel
 }: {
   children: ReactNode
-  className: string
+  className?: string
   pendingLabel: string
 }) {
   const { pending } = useFormStatus()
 
   return (
-    <button className={className} disabled={pending} type="submit">
+    <button aria-busy={pending} className={className ?? "button"} disabled={pending} type="submit">
       {pending ? pendingLabel : children}
     </button>
   )

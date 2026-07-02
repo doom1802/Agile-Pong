@@ -3,6 +3,7 @@ import { AppShell } from "@/components/AppShell"
 import { CreditsFooter } from "@/components/CreditsFooter"
 import { Leaderboard } from "@/components/Leaderboard"
 import { MatchCard } from "@/components/MatchCard"
+import { FormSubmitButton } from "@/components/FormSubmitButton"
 import { RecentMatchList } from "@/components/RecentMatchList"
 import { displayName } from "@/lib/format"
 import { confirmResult } from "@/server/actions"
@@ -52,7 +53,7 @@ export default async function HomePage() {
                   <Link className="button secondary" href={`/matches/${match.id}`}>Review</Link>
                   <form action={confirmResult}>
                     <input name="matchId" type="hidden" value={match.id} />
-                    <button className="button warning" type="submit">Confirm result</button>
+                    <FormSubmitButton className="button warning" pendingLabel="Confirming...">Confirm result</FormSubmitButton>
                   </form>
                 </div>
               </div>

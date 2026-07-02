@@ -166,6 +166,9 @@ select {
 .nav a,
 .nav button,
 .profile-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
   min-height: 36px;
   padding: 8px 10px;
   border: 1px solid transparent;
@@ -174,6 +177,31 @@ select {
   background: transparent;
   cursor: pointer;
   white-space: nowrap;
+  transition: transform 140ms ease, color 140ms ease, border-color 140ms ease, background 140ms ease;
+}
+
+.profile-chip-avatar {
+  position: relative;
+  display: grid;
+  flex: 0 0 auto;
+  width: 24px;
+  height: 24px;
+  place-items: center;
+  overflow: hidden;
+  border-radius: 50%;
+  background: linear-gradient(135deg, var(--avatar-from), var(--avatar-to));
+  color: white;
+  font-size: 9px;
+  font-weight: 900;
+  transition: transform 140ms ease;
+}
+
+.profile-chip:active .profile-chip-avatar {
+  transform: scale(1.18);
+}
+
+.profile-chip:active {
+  transform: scale(1.08);
 }
 
 .nav a:hover,
@@ -807,6 +835,33 @@ html[data-theme="light"] .badge-medal span {
   text-transform: uppercase;
 }
 
+.button:disabled {
+  cursor: wait;
+  opacity: 0.65;
+}
+
+.global-loading {
+  min-height: 50vh;
+  display: grid;
+  place-content: center;
+  justify-items: center;
+  gap: 12px;
+  color: var(--muted);
+}
+
+.loading-spinner {
+  width: 34px;
+  height: 34px;
+  border: 3px solid var(--line);
+  border-top-color: var(--accent);
+  border-radius: 50%;
+  animation: loading-spin 0.7s linear infinite;
+}
+
+@keyframes loading-spin {
+  to { transform: rotate(360deg); }
+}
+
 .button.secondary {
   border-color: rgb(255 191 63 / 36%);
   background: rgb(255 191 63 / 8%);
@@ -1430,8 +1485,75 @@ html[data-theme="light"] .wrap-screen {
 }
 
 .match-card {
+  position: relative;
   display: grid;
   gap: 14px;
+  transition: transform 160ms ease, border-color 160ms ease, box-shadow 160ms ease;
+}
+
+.match-card:hover {
+  transform: translateY(-2px);
+  border-color: rgb(53 255 141 / 30%);
+  box-shadow: 0 18px 42px rgb(0 0 0 / 28%), 0 0 22px rgb(53 255 141 / 8%);
+}
+
+.match-card-link {
+  position: absolute;
+  z-index: 1;
+  inset: 0;
+  border-radius: inherit;
+}
+
+.match-card-link:focus-visible {
+  outline: 2px solid var(--brand);
+  outline-offset: 3px;
+}
+
+.match-card > :not(.match-card-link) {
+  position: relative;
+  z-index: 2;
+  pointer-events: none;
+}
+
+.match-card :is(a, button, input, form, details, summary) {
+  pointer-events: auto;
+}
+
+.match-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 10px;
+  min-height: 42px;
+  margin-top: auto;
+}
+
+.submitted-actions {
+  display: grid;
+  gap: 8px;
+}
+
+.submitted-note {
+  display: block;
+  text-align: right;
+}
+
+.match-edit {
+  display: block;
+  text-align: right;
+}
+
+.match-edit[open] {
+  text-align: left;
+}
+
+.match-edit > summary {
+  display: inline-flex;
+}
+
+.match-edit[open] > summary {
+  margin-left: auto;
+  margin-bottom: 12px;
 }
 
 .prematch-panel {

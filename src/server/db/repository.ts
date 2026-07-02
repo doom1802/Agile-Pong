@@ -33,6 +33,7 @@ export type Repository = {
   createMatch(input: CreateMatchInput): Promise<MatchWithDetails>
   submitMatchResult(matchId: string, userId: string, sets: MatchSet[]): Promise<void>
   confirmMatchResult(matchId: string, userId: string): Promise<void>
+  editLastMatchResult(matchId: string, userId: string, sets: MatchSet[]): Promise<void>
   cancelMatch(matchId: string, userId: string): Promise<void>
   disputeMatch(matchId: string, userId: string): Promise<void>
   getMatches(): Promise<MatchWithDetails[]>

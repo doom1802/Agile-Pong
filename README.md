@@ -1,15 +1,33 @@
 # Agile Pong
 
-Internal Agile Lab ping-pong ranking app, live at [agile-pong.vercel.app](https://agile-pong.vercel.app).
+Agile Pong is the Agile Lab app for recording ping-pong matches, challenging your colleagues and following the leaderboard.
+
+Try it at [agile-pong.vercel.app](https://agile-pong.vercel.app).
+
+## Getting started
+
+1. Enter your Agile Lab email address.
+2. Check your inbox for the one-time code (OTP) and use it to sign in.
+3. Complete your profile.
+4. Play a match and record the result in the app.
+
+There are two kinds of matches:
+
+- **Ranked:** the result affects the leaderboard and your rating.
+- **Friendly:** the result is recorded, but does not affect the leaderboard.
+
+You can play both kinds of matches as **singles** (one player per side) or **doubles** (two players per side).
 
 ## Product
 
-- Passwordless Supabase Auth restricted to `@agilelab.it`.
-- Profile onboarding, unique nicknames and compressed Storage-backed avatars.
-- Singles and doubles leaderboards with separate Elo ratings.
-- Ranked and unranked match creation.
-- Result flow: `ready → submitted → confirmed`, plus cancellation and dispute.
+- Passwordless sign-in restricted to `@agilelab.it` email addresses.
+- Player profiles with unique nicknames and avatars.
+- Separate singles and doubles leaderboards.
+- Ranked and friendly matches.
+- Result flow: `ready → submitted → confirmed`, with participant cancellation before confirmation.
+- Either participant may edit the latest confirmed match shared by all involved players for one hour; the database reverses and reapplies Elo atomically.
 - Opposite-side confirmation, 24-hour scheduled confirmation, anti-farming and daily caps.
+- Inline score validation, explicit winner summaries, pending states for forms and route-level loading feedback.
 - Open-ended initial season until an admin-controlled rollover is implemented.
 
 ## Architecture

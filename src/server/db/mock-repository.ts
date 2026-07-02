@@ -252,12 +252,52 @@ export const mockRepository: Repository = {
     await this.addEvent({ matchId, userId, type: "confirmed" })
   },
 
+  async editLastMatchResult(matchId, userId, sets) {
+    const match = store().matches.find((candidate) => candidate.id === matchId)
+    if (!match) throw new Error("match_not_found")
+    if (match.status !== "confirmed") throw new Error("match_not_confirmed")
+    if (!match.players.some((player) => player.userId === userId)) throw new Error("not_a_participant")
+    const confirmedAt = match.events.find((event) => event.type === "confirmed")?.createdAt
+    if (!confirmedAt || Date.now() > new Date(confirmedAt).getTime() + 60 * 60 * 1000) throw new Error("edit_window_expired")
+    const participantIds = new Set(match.players.map((player) => player.userId))
+    const matchTime = match.playedAt ?? match.createdAt
+    const hasLaterMatch = store().matches.some((candidate) =>
+      candidate.id !== match.id && (candidate.status === "submitted" || candidate.status === "confirmed") &&
+      (candidate.playedAt ?? candidate.createdAt) > matchTime &&
+      candidate.players.some((player) => participantIds.has(player.userId)))
+    if (hasLaterMatch) throw new Error("not_latest_match")
+    if (match.mode === "ranked" && match.ratingApplied) {
+      for (const player of match.players) {
+        const rating = store().ratings.find((candidate) => candidate.userId === player.userId)
+        if (!rating) continue
+        if (match.type === "singles") {
+          rating.singlesRating -= player.ratingDelta ?? 0
+          rating.singlesRankedMatches -= 1
+        } else {
+          rating.doublesRating -= player.ratingDelta ?? 0
+          rating.doublesRankedMatches -= 1
+        }
+      }
+    }
+    match.sets = sets
+    match.players = match.players.map((player) => ({ ...player, ratingBefore: null, ratingAfter: null, ratingDelta: null }))
+    const editorSide = match.players.find((player) => player.userId === userId)?.side
+    match.status = "submitted"
+    match.winnerSide = null
+    match.ratingApplied = false
+    match.antiFarmingFactor = 1
+    match.submittedByUserId = match.players.find((player) => player.side !== editorSide)?.userId ?? null
+    match.confirmedByUserId = null
+    await this.addEvent({ matchId, userId, type: "admin_edited" })
+    await this.confirmMatchResult(matchId, userId)
+  },
+
   async cancelMatch(matchId, userId) {
     const match = store().matches.find((candidate) => candidate.id === matchId)
     if (!match) throw new Error("match_not_found")
     if (!match.players.some((player) => player.userId === userId)) throw new Error("not_a_participant")
     if (match.status === "cancelled") return
-    if (match.status !== "ready") throw new Error("match_not_ready")
+    if (match.status !== "ready" && match.status !== "submitted") throw new Error("match_not_cancellable")
     match.status = "cancelled"
     await this.addEvent({ matchId, userId, type: "cancelled" })
   },

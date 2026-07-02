@@ -6,6 +6,7 @@ import { logout, saveProfile } from "@/server/actions"
 import { requireUser } from "@/server/auth"
 import { avatarTheme, initials } from "@/lib/format"
 import Link from "next/link"
+import { FormSubmitButton } from "@/components/FormSubmitButton"
 
 export default async function ProfilePage({ searchParams }: { searchParams: Promise<{ error?: string }> }) {
   const user = await requireUser()
@@ -52,9 +53,7 @@ export default async function ProfilePage({ searchParams }: { searchParams: Prom
             </label>
           </div>
           <AvatarPicker defaultValue={user.avatarUrl} fallback={initials(user)} fallbackStyle={avatarTheme(user)} />
-          <button className="button" type="submit">
-            Save changes
-          </button>
+          <FormSubmitButton className="button" pendingLabel="Saving...">Save changes</FormSubmitButton>
         </form>
       </section>
       <section className="panel account-panel">
@@ -82,9 +81,7 @@ export default async function ProfilePage({ searchParams }: { searchParams: Prom
           <p className="subtle">Logout is here so the top bar stays focused on navigation.</p>
         </div>
         <form action={logout}>
-          <button className="button secondary" type="submit">
-            Logout
-          </button>
+          <FormSubmitButton className="button secondary" pendingLabel="Logging out...">Logout</FormSubmitButton>
         </form>
       </section>
       <CreditsFooter />

@@ -4,6 +4,7 @@ import { useMemo, useState } from "react"
 import type { createMatch } from "@/server/actions"
 import type { PlayerRating, User } from "@/server/db/types"
 import { displayName, signed } from "@/lib/format"
+import { FormSubmitButton } from "./FormSubmitButton"
 
 type Props = {
   users: User[]
@@ -134,9 +135,7 @@ export function MatchBuilder({ users, ratings, currentUser, initialPlayerIds = [
           />
         ) : null}
 
-        <button className="button full" type="submit">
-          Create match
-        </button>
+        <FormSubmitButton className="button full" pendingLabel="Creating match...">Create match</FormSubmitButton>
       </form>
 
       <section className="panel">

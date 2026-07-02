@@ -299,7 +299,7 @@ export const submitResult = async (formData: FormData) => {
     const match = await db.getMatch(parsed.data.matchId)
     if (!match) throw new Error("match_not_found")
     validateMatchSets(match, sets)
-  } catch { redirect("/matches?error=invalid-score") }
+  } catch (error) { redirect(`/matches?error=${commandError(error)}`) }
   try { await db.submitMatchResult(parsed.data.matchId, user.id, sets) } catch (error) { redirect(`/matches?error=${commandError(error)}`) }
   revalidateMatchViews()
 }
@@ -307,6 +307,23 @@ export const submitResult = async (formData: FormData) => {
 export const confirmResult = async (formData: FormData) => {
   const user = await requireUser()
   await runMatchCommand(formData, (matchId) => db.confirmMatchResult(matchId, user.id))
+}
+
+export const editLastMatchResult = async (formData: FormData) => {
+  const user = await requireUser()
+  const parsed = matchCommandSchema.safeParse({ matchId: formData.get("matchId") })
+  if (!parsed.success) redirect("/matches?error=invalid-request")
+  try {
+    const sets = parseSetScores(parsed.data.matchId, String(formData.get("sets") ?? ""))
+    const match = await db.getMatch(parsed.data.matchId)
+    if (!match) throw new Error("match_not_found")
+    validateMatchSets(match, sets)
+    await db.editLastMatchResult(parsed.data.matchId, user.id, sets)
+  } catch (error) {
+    redirect(`/matches?error=${commandError(error)}`)
+  }
+  revalidateMatchViews()
+  redirect("/matches?updated=result")
 }
 
 export const cancelMatch = async (formData: FormData) => {
@@ -335,10 +352,20 @@ const revalidateMatchViews = () => {
 
 const commandError = (error: unknown) => {
   const message = error instanceof Error ? error.message : ""
+  if (message.includes("authentication_required") || message.includes("session")) return "session-expired"
   if (message.includes("opposite_side")) return "opposite-side-required"
+  if (message.includes("edit_window_expired")) return "edit-window-expired"
+  if (message.includes("not_latest_match")) return "not-latest-match"
   if (message.includes("not_a_participant") || message.includes("permission")) return "not-authorized"
+  if (message.includes("sets_after_match_winner")) return "sets-after-winner"
+  if (message.includes("insufficient_winning_sets")) return "incomplete-match"
+  if (message.includes("sets_do_not_produce_winner") || message.includes("produce a winner")) return "no-winner"
+  if (message.includes("invalid_ranked_set") || message.includes("Invalid set score")) return "invalid-set-score"
+  if (message.includes("invalid_ranked_format")) return "invalid-format"
+  if (message.includes("Add at least one set")) return "missing-score"
+  if (message.includes("rating_not_found") || message.includes("Missing rating")) return "rating-not-found"
   if (message.includes("score") || message.includes("sets_") || message.includes("winning_sets")) return "invalid-score"
-  if (message.includes("not_ready") || message.includes("not_submitted")) return "invalid-state"
+  if (message.includes("not_ready") || message.includes("not_submitted") || message.includes("not_confirmed") || message.includes("not_cancellable")) return "invalid-state"
   if (message.includes("not_found")) return "not-found"
   return "command-failed"
 }

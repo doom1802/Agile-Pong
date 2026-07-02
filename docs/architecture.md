@@ -1,6 +1,6 @@
 # Agile Pong — Architecture
 
-Last reviewed: 2026-07-01
+Last reviewed: 2026-07-02
 
 ## Runtime architecture
 
@@ -36,14 +36,15 @@ create
 ready ───────────────► cancelled
   │ submit result
   ▼
-submitted ───────────► disputed
+submitted ───────────► cancelled
   │ opposite side confirms
   │ or scheduled confirmation after 24h
   ▼
-confirmed
+confirmed ───────────► confirmed
+          edit latest result within 1h
 ```
 
-`cancelled`, `disputed` and `confirmed` are terminal in the current application. Confirmation derives the winner from stored sets and applies Elo at most once in the same transaction. Unranked confirmation records history without changing ratings.
+Participants can cancel `ready` or `submitted` matches before Elo is applied. Confirmation derives the winner from stored sets and applies Elo at most once in the same transaction. A confirmed result can be edited for one hour only when it is still the latest submitted/confirmed match for every participant. The edit command locks the affected ratings, reverses the previous snapshots and counters, replaces the sets, and reapplies Elo atomically; no partially reverted state is externally visible. Unranked confirmation and editing record history without changing ratings.
 
 ## Authorization matrix
 
@@ -54,20 +55,21 @@ confirmed
 | Create match | Yes; creator must be first participant | N/A | No | No |
 | Submit result | Any participant while `ready` | Any participant while `ready` | No | No |
 | Confirm result | No, if same side submitted | Yes, while `submitted` | No | After 24h |
-| Cancel match | Participant in an allowed state | Participant in an allowed state | No | No |
-| Dispute submitted result | Participant | Participant | No | No |
+| Cancel match | Any participant while `ready` or `submitted` | Any participant while `ready` or `submitted` | No | No |
+| Edit latest confirmed result | Any participant, within 1h and only if latest for every player | Any participant under the same rules | No | No |
+| Dispute submitted result | RPC retained but not exposed in the current UI | Same | No | No |
 | Write ratings/events directly | No | No | No | Private RPC only |
 | Upload/delete avatar | Own Storage folder only | Own folder only | Own folder only | No |
 
-Admin correction/deletion is not implemented yet and must not be inferred from the presence of private role data.
+General admin correction/deletion is not implemented. The participant edit command is deliberately narrower and cannot rewrite an older rating history.
 
 ## Rating and season consistency
 
-Singles and doubles ratings are separate per player and season. Confirmation locks the match and affected rating rows, applies anti-farming and daily caps, stores before/after/delta snapshots, and records an audit event. The initial `Open Season` uses PostgreSQL `infinity` as its end date and remains active until a future reviewed rollover migration closes it.
+Singles and doubles ratings are separate per player and season. Confirmation and latest-result editing lock the match and affected rating rows, apply anti-farming and daily caps, store before/after/delta snapshots, and record audit events. The initial `Open Season` uses PostgreSQL `infinity` as its end date and remains active until a future reviewed rollover migration closes it.
 
 ## Delivery and operations
 
-Pull requests must pass dependency audit, lint, typecheck, unit tests, 70 pgTAP assertions, the concurrency test, 16 browser tests and a production build. Protected `main` requires the CI check. A separate production workflow serializes `supabase db push` after merges.
+Pull requests must pass dependency audit, lint, typecheck, unit tests, 83 pgTAP assertions, the concurrency test, browser tests and a production build. Protected `main` requires the CI check. A separate production workflow serializes `supabase db push` after merges.
 
 For the internal pilot, Vercel runtime/function logs, Supabase Auth/Postgres logs and GitHub Action results are the observability stack. Sensitive values such as OTPs, tokens, credentials and full personal data must not be logged. Sentry is deferred until error volume or support needs justify another processor and SDK.
 
