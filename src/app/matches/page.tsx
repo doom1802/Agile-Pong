@@ -38,9 +38,6 @@ export default async function MatchesPage({ searchParams }: { searchParams: Prom
       </div>
 
       <form className="panel" method="get" style={{ display: "grid", gap: 12, marginBottom: 20 }}>
-        <input name="prematch" type="hidden" value={params.prematch ?? ""} />
-        <input name="error" type="hidden" value={params.error ?? ""} />
-        <input name="updated" type="hidden" value={params.updated ?? ""} />
         <div className="grid two" style={{ gap: 12 }}>
           <label className="field">
             <span>Filter</span>
@@ -85,10 +82,19 @@ const parseOrderBy = (value?: string): MatchOrderBy => {
 const filterMatches = (matches: MatchWithDetails[], users: User[], normalizedFilter: string) => {
   if (!normalizedFilter) return matches
   return matches.filter((match) => {
-    const sideA = sideName(match, users, "A").toLowerCase()
-    const sideB = sideName(match, users, "B").toLowerCase()
-    return sideA.includes(normalizedFilter) || sideB.includes(normalizedFilter)
+    return match.players.some((player) => {
+      const user = users.find((candidate) => candidate.id === player.userId)
+      return searchablePlayerName(user).includes(normalizedFilter)
+    })
   })
+}
+
+const searchablePlayerName = (user: User | undefined) => {
+  if (!user) return ""
+  return [displayName(user), user.nickname, user.firstName, user.lastName]
+    .filter(Boolean)
+    .join(" ")
+    .toLocaleLowerCase()
 }
 
 const sortMatches = (matches: MatchWithDetails[], users: User[], orderBy: MatchOrderBy) => {
