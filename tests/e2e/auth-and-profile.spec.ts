@@ -19,6 +19,32 @@ test("rejects non-company addresses", async ({ page }) => {
   await expect(page.getByText("Use an @agilelab.it email.")).toBeVisible()
 })
 
+test("filters matches by real player name and orders by side", async ({ page }) => {
+  await login(page)
+  await page.goto("/matches?error=not-found&updated=result")
+
+  await page.getByLabel("Filter").fill("Rossi")
+  await page.getByLabel("Order By").selectOption("playerA")
+  await page.getByRole("button", { name: "Apply" }).click()
+
+  const url = new URL(page.url())
+  expect(url.searchParams.get("filter")).toBe("Rossi")
+  expect(url.searchParams.get("orderBy")).toBe("playerA")
+  expect(url.searchParams.has("error")).toBe(false)
+  expect(url.searchParams.has("updated")).toBe(false)
+
+  const matchCards = page.locator("article")
+  await expect(matchCards.first()).toBeVisible()
+  const matchCount = await matchCards.count()
+  expect(matchCount).toBeGreaterThan(0)
+  for (let index = 0; index < matchCount; index += 1) {
+    await expect(matchCards.nth(index)).toContainText("Luk")
+  }
+
+  const sideANames = await page.locator("article .versus > div:first-child h2").allTextContents()
+  expect(sideANames).toEqual([...sideANames].sort((left, right) => left.localeCompare(right)))
+})
+
 test("supports mock login, profile editing, and logout", async ({ page }) => {
   await login(page)
   await page.goto("/profile")
