@@ -26,6 +26,8 @@ select lives_ok(
   'service role can submit a ranked singles quick insert'
 );
 
+reset role;
+
 select is(
   (select quick_insert from public.matches where created_by_user_id = '60000000-0000-0000-0000-000000000001' order by created_at desc limit 1),
   true,
@@ -68,6 +70,8 @@ select is(
   'first Side A player is the technical submitter'
 );
 
+set local role service_role;
+
 select lives_ok(
   $$ select public.quick_insert_match_command(
     'doubles',
@@ -83,6 +87,8 @@ select lives_ok(
   ) $$,
   'service role can submit a ranked doubles quick insert'
 );
+
+reset role;
 
 select is(
   (select count(*) from public.match_players where match_id = (
