@@ -1,6 +1,6 @@
 # Agile Pong — Architecture
 
-Last reviewed: 2026-07-02
+Last reviewed: 2026-09-17
 
 ## Runtime architecture
 
@@ -19,13 +19,15 @@ Production is `https://agile-pong.vercel.app`. Development uses local Supabase o
 ## Trust boundaries
 
 - The browser is untrusted. Hidden controls and Server Actions are not authorization boundaries.
-- Every mutating Server Action except OTP request/verification requires an authenticated user.
+- Every mutating Server Action except OTP request/verification and token-protected Quick Insert requires an authenticated user.
 - Inputs are checked in UI, Server Actions and PostgreSQL where the invariant affects data integrity.
 - RLS and grants are the final table-access boundary.
 - Authenticated clients can read company application data and update only their own allowed profile columns.
 - Match, set, event and rating tables reject direct authenticated writes.
 - Public SECURITY DEFINER wrappers expose only narrow match commands; private implementations are not executable by API roles.
-- The publishable Supabase key is safe in the browser. Secret/service-role keys are not used by the application.
+- The publishable Supabase key is safe in the browser. The service-role key is server-only and is used solely to call the Quick Insert RPC after token and optional office-IP validation.
+
+Quick Insert is a deliberately narrow exception to the authenticated match workflow. The QR carries a high-entropy token, the application can additionally require a configured public office IP, and the server sends only display-safe player fields to anonymous clients. Its transactional RPC always creates a ranked match directly in `submitted` state. The first Side A player is the technical submitter so the existing opposite-side confirmation and 24-hour auto-confirmation paths remain unchanged. A `quick_insert` flag provides the visible source tag; no new audit event type is introduced.
 
 ## Match state machine
 

@@ -22,6 +22,7 @@ export function MatchCard({ match, users, ratings, currentUserId, canEditResult 
         <span className="pill green">{match.mode}</span>
         <span className="pill">{match.type}</span>
         <span className="pill gold">{match.status}</span>
+        {match.quickInsert ? <span className="pill">Quick insert</span> : null}
         {match.pointsToWin ? <span className="pill">to {match.pointsToWin}</span> : null}
         {match.bestOf ? <span className="pill">best of {match.bestOf}</span> : null}
         {match.antiFarmingFactor < 1 ? <span className="pill gold">{Math.round(match.antiFarmingFactor * 100)}% rating weight</span> : null}

@@ -46,6 +46,7 @@ export type Match = {
   createdByUserId: string
   ratingApplied: boolean
   antiFarmingFactor: number
+  quickInsert: boolean
   submittedByUserId: string | null
   confirmedByUserId: string | null
   createdAt: string

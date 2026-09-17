@@ -27,12 +27,23 @@ You can play both kinds of matches as **singles** (one player per side) or **dou
 - Result flow: `ready → submitted → confirmed`, with participant cancellation before confirmation.
 - Either participant may edit the latest confirmed match shared by all involved players for one hour; the database reverses and reapplies Elo atomically.
 - Opposite-side confirmation, 24-hour scheduled confirmation, anti-farming and daily caps.
+- Token-protected Quick Insert for anonymous ranked singles and doubles, with an optional office public-IP allowlist.
 - Inline score validation, explicit winner summaries, pending states for forms and route-level loading feedback.
 - Open-ended initial season until an admin-controlled rollover is implemented.
 
 ## Architecture
 
 The application is a Next.js App Router monolith on Vercel backed by Supabase Auth, PostgreSQL and Storage. Browser and Server Action input is untrusted; RLS, grants and transactional RPC commands enforce data access and match transitions. Production never enables mock backends.
+
+## Quick Insert QR
+
+Set `QUICK_INSERT_TOKEN` to a long random value and `SUPABASE_SERVICE_ROLE_KEY` to the server-only Supabase service-role key. The QR must point to:
+
+```text
+https://agile-pong.vercel.app/quick/<QUICK_INSERT_TOKEN>
+```
+
+The app also renders a printable SVG at `/quick/<QUICK_INSERT_TOKEN>/qr`. To restrict submissions to office Wi-Fi, set `QUICK_INSERT_ALLOWED_IPS` to a comma-separated list of the offices' public egress IP addresses. Quick Insert results start as `submitted`, can be contested or confirmed by participants, and follow the existing 24-hour automatic confirmation.
 
 See [local development](docs/local-development.md), [architecture](docs/architecture.md), [product specification](docs/product-spec.md), [roadmap](docs/development-roadmap.md) and [production setup](docs/production-setup.md).
 

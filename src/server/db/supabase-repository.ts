@@ -101,6 +101,7 @@ const toMatch = (row: any): MatchWithDetails => ({
   createdByUserId: row.created_by_user_id,
   ratingApplied: row.rating_applied,
   antiFarmingFactor: Number(row.anti_farming_factor),
+  quickInsert: row.quick_insert,
   submittedByUserId: row.submitted_by_user_id,
   confirmedByUserId: row.confirmed_by_user_id,
   createdAt: row.created_at,

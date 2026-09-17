@@ -145,6 +145,7 @@ export type Database = {
           mode: Database["public"]["Enums"]["match_mode"]
           played_at: string | null
           points_to_win: number | null
+          quick_insert: boolean
           rating_applied: boolean
           season_id: string | null
           status: Database["public"]["Enums"]["match_status"]
@@ -164,6 +165,7 @@ export type Database = {
           mode: Database["public"]["Enums"]["match_mode"]
           played_at?: string | null
           points_to_win?: number | null
+          quick_insert?: boolean
           rating_applied?: boolean
           season_id?: string | null
           status?: Database["public"]["Enums"]["match_status"]
@@ -183,6 +185,7 @@ export type Database = {
           mode?: Database["public"]["Enums"]["match_mode"]
           played_at?: string | null
           points_to_win?: number | null
+          quick_insert?: boolean
           rating_applied?: boolean
           season_id?: string | null
           status?: Database["public"]["Enums"]["match_status"]
@@ -360,6 +363,16 @@ export type Database = {
       edit_last_match_result_command: {
         Args: { p_match_id: string; p_sets: Json }
         Returns: undefined
+      }
+      quick_insert_match_command: {
+        Args: {
+          p_best_of: number
+          p_player_ids: string[]
+          p_points_to_win: number
+          p_sets: Json
+          p_type: Database["public"]["Enums"]["match_type"]
+        }
+        Returns: string
       }
       submit_match_result_command: {
         Args: { p_match_id: string; p_sets: Json }

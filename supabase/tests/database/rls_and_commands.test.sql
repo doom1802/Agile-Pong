@@ -1,5 +1,5 @@
 begin;
-select plan(22);
+select plan(27);
 
 select has_table('public', 'profiles', 'profiles exists');
 select has_table('public', 'matches', 'matches exists');
@@ -11,6 +11,20 @@ select has_function('public', 'dispute_match_command', array['uuid'], 'dispute R
 select has_function('private', 'process_overdue_match_confirmations', array[]::text[], 'auto-confirm worker exists');
 select has_column('public', 'matches', 'auto_confirmed_at', 'automatic confirmation is audited on matches');
 select has_column('public', 'match_events', 'automatic', 'automatic confirmation is audited on events');
+select has_column('public', 'matches', 'quick_insert', 'quick insert source is tagged on matches');
+select has_function('public', 'quick_insert_match_command', array['match_type', 'smallint', 'smallint', 'uuid[]', 'jsonb'], 'quick insert RPC exists');
+select ok(
+  not has_function_privilege('anon', 'public.quick_insert_match_command(match_type,smallint,smallint,uuid[],jsonb)', 'execute'),
+  'anonymous users cannot call quick insert RPC directly'
+);
+select ok(
+  not has_function_privilege('authenticated', 'public.quick_insert_match_command(match_type,smallint,smallint,uuid[],jsonb)', 'execute'),
+  'authenticated users cannot call quick insert RPC directly'
+);
+select ok(
+  has_function_privilege('service_role', 'public.quick_insert_match_command(match_type,smallint,smallint,uuid[],jsonb)', 'execute'),
+  'only the server service role can call quick insert RPC'
+);
 
 select policies_are('public', 'profiles', array['profiles_read_authenticated', 'profiles_update_self'], 'profile policies are explicit');
 select policies_are('public', 'player_ratings', array['ratings_read_authenticated'], 'ratings are read-only through RLS');
