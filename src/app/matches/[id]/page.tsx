@@ -28,7 +28,7 @@ export default async function MatchDetailPage({ params }: { params: Promise<{ id
         <div>
           <p className="eyebrow">Match detail</p>
           <h1>{namesForSide(match, users, "A")} vs {namesForSide(match, users, "B")}</h1>
-          <p className="subtle">{match.mode} · {match.type} · {match.status}</p>
+          <p className="subtle">{match.mode} · {match.type} · {match.status}{match.quickInsert ? " · quick insert" : ""}</p>
         </div>
         <Link className="button secondary" href="/matches">
           Back to matches
@@ -94,6 +94,12 @@ export default async function MatchDetailPage({ params }: { params: Promise<{ id
               <span>Played at</span>
               <strong>{match.playedAt ? new Date(match.playedAt).toLocaleDateString("en-GB") : "-"}</strong>
             </div>
+            {match.quickInsert ? (
+              <div className="mini-stat">
+                <span>Source</span>
+                <strong>Quick insert</strong>
+              </div>
+            ) : null}
           </div>
         </div>
       </section>

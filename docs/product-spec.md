@@ -22,6 +22,7 @@ Agile Pong is an internal **Agile Lab** web app for tracking ping pong matches b
 - Ranked match length: best of 3 or best of 5.
 - Ranked matches: every set score is recorded.
 - Match results require in-app confirmation from the other side.
+- A token-protected Quick Insert QR can submit ranked singles or doubles without login; results remain contestable and auto-confirm after 24 hours.
 - Either participant can edit a confirmed result for one hour when it is still the latest match for every participant.
 - Participants can cancel ready or submitted matches; cancelled matches never apply Elo.
 - The initial `Open Season` has no automatic expiry.

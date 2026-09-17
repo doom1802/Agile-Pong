@@ -1,15 +1,15 @@
 # Agile Pong — Production setup
 
-Last reviewed: 2026-07-01 (avatar upload RLS fix)
+Last reviewed: 2026-09-17 (Quick Insert)
 
 ## Security review status
 
 Completed in code and local validation:
 
-- Every mutating Server Action requires a verified user except OTP request/verification.
+- Every mutating Server Action requires a verified user except OTP request/verification and token-protected Quick Insert.
 - Match mutations cross the database boundary through authenticated transactional RPCs.
 - RLS and column grants prevent anonymous reads and direct authenticated writes to protected tables.
-- No service-role or Supabase secret key is present in application code or tracked environment files.
+- No service-role or Supabase secret key is present in application code or tracked environment files; Quick Insert reads its service-role key only from the server environment.
 - Mock authentication and data backends are hard-disabled when `NODE_ENV=production`.
 - CSP, clickjacking, MIME sniffing, referrer, opener, permissions and production HSTS headers are configured.
 - `npm audit --omit=dev` reports zero vulnerabilities after the PostCSS security override.
@@ -72,17 +72,20 @@ Do not expose these values to pull-request workflows or Vercel. Keep migrations 
    NEXT_PUBLIC_APP_URL=https://agile-pong.vercel.app
    NEXT_PUBLIC_SUPABASE_URL=https://cpzdfvhrgagfclcqbamo.supabase.co
    NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=<publishable-key>
+   SUPABASE_SERVICE_ROLE_KEY=<server-only-service-role-key>
    ALLOWED_EMAIL_DOMAIN=agilelab.it
+   QUICK_INSERT_TOKEN=<long-random-token>
+   QUICK_INSERT_ALLOWED_IPS=<optional-comma-separated-office-public-ips>
    AUTH_BACKEND=supabase
    DATA_BACKEND=supabase
    ```
 
-3. Never add a service-role/secret key to Vercel for the current application. Do not configure `MOCK_LOGIN_CODE` in Production.
+3. Keep the service-role key server-only and scope its application use to Quick Insert. Never prefix it with `NEXT_PUBLIC_`, log it or expose it to the browser. Do not configure `MOCK_LOGIN_CODE` in Production.
 4. In Supabase **Authentication > URL Configuration** set:
    - Site URL: `https://agile-pong.vercel.app`.
    - Redirect URLs: `http://localhost:3001/**` and `https://agile-pong.vercel.app/**`.
 5. Apply migrations with a reviewed deployment step, then regenerate and commit database types.
-6. Smoke-test login, onboarding, profile update, singles/doubles flow, logout and mobile layout on the Vercel production domain.
+6. Smoke-test login, onboarding, profile update, singles/doubles flow, Quick Insert from the QR, logout and mobile layout on the Vercel production domain.
 
 ## OTP limits, CAPTCHA and SMTP
 

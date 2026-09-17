@@ -176,6 +176,7 @@ export const mockRepository: Repository = {
       createdByUserId: input.createdByUserId,
       ratingApplied: false,
       antiFarmingFactor: 1,
+      quickInsert: false,
       submittedByUserId: null,
       confirmedByUserId: null,
       createdAt: now(),
