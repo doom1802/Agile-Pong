@@ -1,5 +1,5 @@
 begin;
-select plan(27);
+select plan(28);
 
 select has_table('public', 'profiles', 'profiles exists');
 select has_table('public', 'matches', 'matches exists');
@@ -24,6 +24,14 @@ select ok(
 select ok(
   has_function_privilege('service_role', 'public.quick_insert_match_command(match_type,smallint,smallint,uuid[],jsonb)', 'execute'),
   'only the server service role can call quick insert RPC'
+);
+select ok(
+  has_column_privilege('service_role', 'public.profiles', 'id', 'select')
+    and has_column_privilege('service_role', 'public.profiles', 'first_name', 'select')
+    and has_column_privilege('service_role', 'public.profiles', 'last_name', 'select')
+    and has_column_privilege('service_role', 'public.profiles', 'nickname', 'select')
+    and not has_column_privilege('service_role', 'public.profiles', 'email', 'select'),
+  'service role can list safe quick insert player fields without reading email'
 );
 
 select policies_are('public', 'profiles', array['profiles_read_authenticated', 'profiles_update_self'], 'profile policies are explicit');
