@@ -18,7 +18,7 @@ type Props = {
 
 export function QuickInsertForm({ action, currentUserId, players, token }: Props) {
   const [type, setType] = useState<"singles" | "doubles">("singles")
-  const [pointsToWin, setPointsToWin] = useState<11 | 21>(11)
+  const [pointsToWin, setPointsToWin] = useState<11 | 21>(21)
   const [bestOf, setBestOf] = useState<3 | 5>(3)
   const [sideA1, setSideA1] = useState(currentUserId ?? "")
   const [sideA2, setSideA2] = useState("")
@@ -189,7 +189,15 @@ function PlayerPicker({ label, name, players, value, excludedIds, onChange }: {
           ))}
         </div>
       ) : null}
-      {selected ? <small className="subtle">Selected: {playerName(selected)}</small> : null}
+      {selected ? (
+        <div className="selected-player" aria-live="polite">
+          <span className="selected-player-check" aria-hidden="true">✓</span>
+          <span>
+            <small>Selected player</small>
+            <strong>{playerName(selected)}</strong>
+          </span>
+        </div>
+      ) : null}
     </div>
   )
 }

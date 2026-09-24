@@ -801,6 +801,15 @@ html[data-theme="light"] .badge-medal span {
   outline: none;
 }
 
+.select {
+  padding-right: 42px;
+  appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='18' height='18' viewBox='0 0 24 24' fill='none' stroke='%23a8b9ad' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m7 10 5 5 5-5'/%3E%3C/svg%3E");
+  background-position: right 14px center;
+  background-repeat: no-repeat;
+  cursor: pointer;
+}
+
 .input:focus,
 .select:focus {
   border-color: var(--brand);
@@ -829,6 +838,13 @@ html[data-theme="light"] .badge-medal span {
 
 .choice input {
   accent-color: var(--brand);
+}
+
+.choice:has(input:checked) {
+  border-color: var(--brand);
+  background: rgb(53 255 141 / 14%);
+  box-shadow: 0 0 0 2px rgb(53 255 141 / 10%), inset 0 0 22px rgb(53 255 141 / 5%);
+  color: var(--brand);
 }
 
 .locked-player {
@@ -867,6 +883,47 @@ html[data-theme="light"] .badge-medal span {
   border-color: var(--brand);
   background: rgb(53 255 141 / 12%);
   box-shadow: 0 0 0 2px rgb(53 255 141 / 8%);
+}
+
+.selected-player {
+  display: flex;
+  min-height: 54px;
+  align-items: center;
+  gap: 10px;
+  padding: 9px 11px;
+  border: 1px solid rgb(53 255 141 / 52%);
+  border-radius: var(--radius);
+  background: rgb(53 255 141 / 12%);
+  box-shadow: 0 0 0 2px rgb(53 255 141 / 7%);
+  color: var(--ink);
+}
+
+.selected-player > span:last-child {
+  display: grid;
+  gap: 1px;
+}
+
+.selected-player small {
+  color: var(--brand);
+  font-size: 10px;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+
+.selected-player strong {
+  font-size: 15px;
+}
+
+.selected-player-check {
+  display: grid;
+  width: 28px;
+  height: 28px;
+  flex: 0 0 auto;
+  place-items: center;
+  border-radius: 50%;
+  background: var(--brand);
+  color: #06100a;
+  font-weight: 1000;
 }
 
 .button {
@@ -2044,6 +2101,12 @@ html[data-theme="light"] .score-row input {
 
 html[data-theme="light"] .input::placeholder {
   color: #7b8d80;
+}
+
+html[data-theme="light"] .select {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='18' height='18' viewBox='0 0 24 24' fill='none' stroke='%23455a4c' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m7 10 5 5 5-5'/%3E%3C/svg%3E");
+  background-position: right 14px center;
+  background-repeat: no-repeat;
 }
 
 html[data-theme="light"] .player-option.selected,
