@@ -2,8 +2,12 @@ import { expect, test, type Browser, type Locator, type Page } from "@playwright
 
 const login = async (page: Page, email: string) => {
   await page.goto("/login")
-  await page.getByLabel("Company email").fill(email)
+  await page.waitForLoadState("networkidle")
+  const emailInput = page.getByLabel("Company email")
+  await emailInput.fill(email)
+  await expect(emailInput).toHaveValue(email)
   await page.getByRole("button", { name: "Send code" }).click()
+  await expect(page).toHaveURL(/t=\d{13}/)
   await page.getByRole("button", { name: "Enter" }).click()
   await expect(page).not.toHaveURL(/\/login/)
 }
